@@ -1,0 +1,47 @@
+/* bifrost.css */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.2; transform: scale(0.95); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.animate-shimmer {
+  background: linear-gradient(45deg, transparent, rgba(0,249,255,0.6), transparent);
+  background-size: 200%;
+  border-radius: 9999px;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes blinkEye {
+  0%, 50%, 100% { opacity: 0; }
+  25%, 75% { opacity: 0.8; }
+}
+.blink-eye {
+  background: rgba(0,249,255,0.6);
+  animation: blinkEye 0.6s ease-in-out 0s 3;
+  pointer-events: none;
+}
+
+/* Blink success: cyan blink (repeated 2 times) */
+@keyframes blinkSuccess {
+  0%, 50%, 100% { opacity: 0; }
+  25%, 75% { opacity: 0.8; }
+}
+.blink-success {
+  background: rgba(0,249,255,0.6);
+  animation: blinkSuccess 0.6s ease-in-out 0s 3;
+  pointer-events: none;
+}
+
+/* Blink error: red blink (once) */
+@keyframes blinkError {
+  0%, 50%, 100% { opacity: 0; }
+  25%, 75% { opacity: 0.8; }
+}
+.blink-error {
+  background: rgba(255,0,0,0.4);
+  animation: blinkError 0.6s ease-in-out 0s 2;
+  pointer-events: none;
+}
+
+.hover\:shadow-neon:hover {
+  box-shadow: 0 0 20px rgba(0,249,255,0.8);
+}
