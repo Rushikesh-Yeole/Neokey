@@ -5,7 +5,7 @@ import { AppContext } from "../context/AppContext";
 import axios from 'axios';
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
-import { encrypt } from "../components/aesbox";
+import { bhash, encrypt, hash } from "../components/aesbox";
 import Footer from "../components/Footer";
 
 const Login = () => {
@@ -69,22 +69,23 @@ const Login = () => {
         return;
       }
       const cryptemail = encrypt(email, publicKey);
-      const cryptpassword = encrypt(password, publicKey);
-      const cryptotp = encrypt(otpString, publicKey);
+      const cryptpassword = hash(password, email);
+      const cryptotp = bhash(otpString);
       
       const { data } = await axios.post(backendUrl + '/auth/reset', { cryptemail, cryptpassword, cryptotp });
       if (data.success) {
         localStorage.setItem("email", email);
         localStorage.setItem("token", data.token);
+        axios.defaults.headers["Authorization"] = `Bearer ${data.token}`;
         
-        await axios.post(`${backendUrl}/admin/engage`, { action:`reset`});
-        toast.success(data.message, {autoClose: 300,
+        axios.post(`${backendUrl}/admin/engage`, { action: 'reset' }).catch(() => {});
+        toast.success(data.message, {autoClose: 500,
           onClose: () => {
           setIsLoggedIn('T');
           setPassword("");
           setOtp(['', '', '', '', '', ''])
           navigate('/');
-          window.location.reload();}
+          }
         });
       } else {
         toast.error(data.message,{ autoClose: 1000});
@@ -206,7 +207,7 @@ const Login = () => {
     { <button type="submit" className={`font-size: 16px w-full py-2.5 rounded-full border border-[#00f9ff] shadow-sm text-white font-medium ${isLoading? "loading-bar":"" } `}>{isSent? "Re-send OTP":"Send OTP" }</button>}
       </form>
       </div>
-      <div className="w-full mt-auto ">
+      <div className="w-full mt-auto text-gray-200">
       <Footer />
       </div>
     </div>

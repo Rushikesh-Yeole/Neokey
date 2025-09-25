@@ -12,7 +12,7 @@ authRouter.use(authLimiter);
 authRouter.post('/otp', gate);
 authRouter.post('/verify-account', verifyEmail);
 authRouter.post('/reset-otp', resetOTP);
-authRouter.post('/reset',userAuth, reset);
+authRouter.post('/reset', reset);
 authRouter.post('/bifrost',userAuth, bifrost);
 authRouter.post('/close-bifrost',closeBifrost );
 

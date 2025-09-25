@@ -4,6 +4,7 @@ import transporter from "../config/nodemailer.js";
 import redis from "../models/redisClient.js";
 import { Parser } from "json2csv";
 import cron from "node-cron";
+import { mailAccess } from "./cache.js";
 
 const dateKey = () => {
   const d = new Date();
@@ -11,7 +12,7 @@ const dateKey = () => {
     .map(n => String(n).padStart(2, '0')).join("-");
 };
 
-// ------------------- BUFFERED INCREMENT -------------------
+//BUFFERED INCREMENT
 
 const updateBuffer = async ({ type, action }) => {
   const key = "statsCache";
@@ -34,7 +35,7 @@ const updateBuffer = async ({ type, action }) => {
   await redis.set(key, JSON.stringify(buffer));
 };
 
-// ------------------- CACHE FLUSH TO DB -------------------
+//CACHE FLUSH TO DB
 
 export const flushStatsCache = async () => {
   const key = "statsCache";
@@ -59,7 +60,7 @@ export const flushStatsCache = async () => {
 
 cron.schedule("*/7 * * * *", () => flushStatsCache().catch(console.error));
 
-// ------------------- ROUTES -------------------
+// ROUTES 
 
 export const retrieved = (req, res) =>
   updateBuffer({ type: "retrievals" }).then(() => res.sendStatus(200)).catch(() => res.sendStatus(500));
@@ -172,4 +173,12 @@ export const resetStats = async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+};
+
+export const access = async (req, res) => {
+    try {
+        return res.json({success:await mailAccess()});
+    } catch (error) {
+        return res.status(500).send();
+    }
 };

@@ -1,45 +1,43 @@
 import userModel from "../models/userModel.js";
-import { hash, cook, useOffset, fromHex, adjustOffset, toHex } from './magic.js';
-import bcrypt from 'bcryptjs';
-import { decrypt} from "./aesbox.js";
+import { hash, cook, useOffset, fromHex } from './magic.js';
+// import bcrypt from 'bcryptjs';
+import { decrypt, symDecrypt} from "./aesbox.js";
 import { cached, cacheUserMetadata, getUserMetadata } from "./cache.js";
 
-const updateKey = async (userId, service, tm) => {
-    try {
-        await userModel.updateOne(
-            { _id: userId },
-            { $set: { [`serv.${service}`]: tm } }
-        );
-        return true;
-    } catch (error) {
-        console.error("Key updation error:", error);
-        return false;
-    }
-};
+const updateKey = async (uid, svc, tm, idx) =>
+  userModel.updateOne(
+    { _id: uid, "serv.name": svc },
+    { $set: { "serv.$.tm": tm } }
+  ).then(r =>
+    r.matchedCount ? true :
+    userModel.updateOne(
+      { _id: uid },
+      { $push: { serv: { name: svc, idx: idx, tm } } }
+    ).then(()=>true)
+  ).catch(e => (console.error("updateKey:", e), false));
+
       
 export const create = async(req, res)=> {
     // console.time('CreateOps');
     let address, lock, hashUser;
     try {
-        const {userId, cryptpassword, cryptlock, crypttimestamp} = req.body;
-        if(!cryptlock || !cryptpassword || !crypttimestamp){
+        const {userId, cryptpassword, cryptlock, timestamp} = req.body;
+        if(!cryptlock || !cryptpassword || !timestamp){
             return res.json({success:false, message: "Incomplete Credentials"});}
 
         lock = decrypt(cryptlock);
-        const timestamp = decrypt(crypttimestamp);
-
-        hashUser = hash(decrypt(cryptpassword))
+        hashUser = hash(cryptpassword);
         address = await userModel.findById(userId, "user").lean();
         if(!address){
-            return res.json({success:false, message:`Access Denied. Please Login Again`});
+            return res.json({success:false, message:`Can't Authenticate. Please Login Again`});
         }
-        const chk = await bcrypt.compare(hashUser, address.user);
+        const chk = (hashUser === address.user);
         if(!chk){
-        return res.json({success:false, message:`Access Denied. Check Password`});
+        return res.json({success:false, message:`Access Denied. Check Credentials`});
         }
         if(chk){
-            await updateKey(userId, lock, timestamp);
-            try { await cacheUserMetadata(userId); } catch (e) {}
+            await updateKey(userId, lock, timestamp, hash(userId+lock));
+            void cacheUserMetadata(userId).catch((e) => {console.error("Metadata caching failed:", e);});
             // console.timeEnd('CreateOps');
             return res.json({success:true, message:`Key Secured for ${lock.replace(/^./, char => char.toUpperCase())}`});
         }
@@ -49,61 +47,101 @@ export const create = async(req, res)=> {
 }
 
 export const retrieve = async(req, res)=> {
+    let address, key, tm, base, hashUser;
     // console.time('retrievalOps');
-    let address, key, log, base, hashUser;
     try {
-        let {userId, cryptpassword, cryptlock} = req.body;
-        if(!cryptpassword || !cryptlock){
+        let {userId, cryptpassword, cryptlock, cryptsalt} = req.body;
+        
+        if(!cryptpassword || !cryptlock || !cryptsalt){
             return res.json({success:false, message: "Incomplete Credentials"});}
-
         let lock = decrypt(cryptlock);
-
-        hashUser = hash(decrypt(cryptpassword))
+        // console.time('cook');
+        hashUser = hash(cryptpassword);
         if (await cached(userId).catch(() => false)) {
-            // console.time('deCache');
+            // console.log('cache')
             try { address = await getUserMetadata(userId);} catch (e) {}
-            // console.timeEnd('deCache');
         } else {
-            // console.time('dbRetrieval');
-            address = await userModel.findById(userId, { user: 1, offset: 1, [`serv.${lock}`]: 1 }).lean();
-            // console.timeEnd('dbRetrieval');
+            // console.log('db')
+            address = await userModel.findById(userId, { user: 1, offset: 1, serv: 1 }).lean();
         }        
+        // address setting took 70ms
+        // console.timeEnd('cook');
         
         if(!address){ return res.json({success:false, message:`Access Denied. Please Login Again`}); }
-        let chk = await bcrypt.compare(hashUser, address.user);
-        if(!chk){ return res.json({success:false, message:`Access Denied. Check Password`}); }
+        // console.time('modulartest')
+        let chk = (hashUser === address.user);
+        // console.timeEnd('modulartest')
+        if(!chk){ return res.json({success:false, message:`Access Denied. Check Credentials`}); }
+        // chk took 160ms
         
         if(chk){
-        let tm = address?.serv?.[lock] || null;
-        if(!tm){ return res.json({ success: false, message: `No key secured for ${lock}` });};
+        let tmDoc = address.serv?.find(s => s.name === lock) || null;
+        if(!tmDoc?.tm){ return res.json({ success: false, message: `No key secured for ${lock}` });}
+        let tm=tmDoc.tm;
+        let scope=Number(tm.slice(0,2));
+        tm=tm.slice(2);
         
-        // console.time('cook');
-        log = await bcrypt.hash(hashUser,Number(process.env.BRIMS)/5)
-        let flip;
-        flip = toHex(adjustOffset(log, address.user, fromHex(decrypt(address.offset))))
-        base = useOffset(log, fromHex(flip));
-        key = cook(base, lock, tm);
-        // console.timeEnd('cook');
-        // console.timeEnd('retrievalOps');
+        base = useOffset(hashUser, fromHex(symDecrypt(address.offset)));
+        key = cook(base, lock, tm, decrypt(cryptsalt));
+        key=key.slice(0,scope);
         return res.json({ success: true, message: `Tap COPY to grab the ${lock.replace(/^./, char => char.toUpperCase())} key.`, key});
         };
     } catch (error) {
         return res.json({success:false, message:error.message});
-    }finally { [address, key, log, base, hashUser] = [null, null, null, null, null]; }
+    }finally { 
+        // console.timeEnd('retrievalOps');
+        [address, key, tm, base, hashUser] = [null, null, null, null, null]; 
+        // console.timeEnd('cook'); 
+    }
 }
 
 export const locks = async (req, res) => {
     const { userId } = req.body;
+    let address;
     try {
-        const user = await userModel.findById(userId, { serv: 1 }).lean();
-        if (!user || !user.serv) {
+        if (await cached(userId).catch(() => false)) {
+            address = await getUserMetadata(userId);
+        } else {
+            address = await userModel.findById(userId, 'alias serv.name').lean();
+        }        
+        if (!address || !address.serv) {
             return res.json({ success: false, message: 'User services absent' });
         }
-        const servObj = Object.fromEntries(Object.entries(user.serv));
-        const locks = Object.keys(servObj);
-        return res.json({ success: true, services: locks });
+        const alias = address.alias;
+        const locks = address.serv.map(s => s.name) || [];
+        return res.json({ success: true, services: locks, alias:alias });
     } catch (error) {
-        console.error('Locks retrieval error', error);
-        return res.json({ success: false, message: 'Internal server error' });
+        console.error('Services retrieval error', error);
+        return res.json({ success: false, message: 'Internal server error for fetching services' });
     }
+};
+
+export const delLock = async (req, res) => {
+  const { userId, cryptpassword, services } = req.body;
+  if (!userId || !cryptpassword || !Array.isArray(services)) 
+    return res.json({ success: false, message:"Service/Credentials Absent" });
+
+  try {
+    let address;
+    if (await cached(userId).catch(() => false)) {
+        try { address = await getUserMetadata(userId);} catch (e) {}
+    } else {
+        address = await userModel.findById(userId, { user: 1 }).lean();
+    }        
+    let chk = (hash(cryptpassword) === address.user);
+    if(!chk){ return res.json({success:false, message:`Change Denied. Check Credentials`}); }
+            
+    await userModel.updateOne(
+      { _id: userId },
+      { $pull: { serv: { name: { $in: services } } } }
+    );
+
+    await cacheUserMetadata(userId).catch((e) => {console.error("Metadata caching failed:", e);});
+    address = await userModel.findById(userId, 'serv.name').lean();
+    const locks = address?.serv?.map(s => s.name) || [];
+    
+    return res.json({ success: true, message: "Changes saved", services:locks });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
 };

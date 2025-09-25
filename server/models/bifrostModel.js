@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const bifrostSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true },
   token: { type: String, required: true },
+  user: {type: String, required: true},
   expiresAt: { type: Date, required: true }
 });
 
