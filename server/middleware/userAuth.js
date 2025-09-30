@@ -30,7 +30,8 @@ export const grantAccess = async(req,res)=>{
     if (await cached(userId).catch(() => false)) {
         return res.json({success:true, message:`Cached Access Granted`});
     }
-    else{let user = await userModel.findById(userId).lean();
+    else{
+        let user = await userModel.findById(userId).lean();
         if(user.isAccountVerified==true){
             try { await cacheUserMetadata(userId); } catch (e) {}
             return res.json({success:true, message:`Access Granted`})

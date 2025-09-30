@@ -6,7 +6,6 @@ import connectDB from "./config/mongodb.js";
 import authRouter from './routes/authRoutes.js';
 import userRouter from "./routes/userRoutes.js";
 import adminRouter from "./routes/adminRoutes.js";
-import { generalLimiter } from './middleware/rateLimit.js';
 
 const app = express();
 const port = process.env.PORT || 5000;

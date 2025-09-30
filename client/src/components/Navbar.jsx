@@ -25,14 +25,21 @@ const Navbar = () => {
   return (
       <div className="w-full flex justify-between items-center p-4 sm:p-6 sm:px-18 absolute top-0 z-10 select-none ">
       {<img onClick={() => navigate('/')}src={assets.logo} alt="Logo" className="left-5 w-16 sm:w-26 mx-2 items-center cursor-pointer glow-logo" />}
+      {<img onClick={() => navigate('/')}src={assets.beta} alt="Logo" className="w-10 mx-2 items-center cursor-pointer " />}
 
+      {/* <div className="ml-auto flex items-center gap-4">
+      <a href="https://github.com/Rushikesh-Yeole" target="_blank" rel="noopener noreferrer">
+      {<img src={assets.github} alt="Logo" className="w-14 mb-2.5  cursor-pointer" />}
+      </a>
+      </div> */}
       {isLoggedIn==='T' ?
       <button className="z-10 flex justify-center ml-auto items-center px-4 py-1.5 sm:py-1 sm:mr-3 sm:px-5 mb-2 rounded-full border border-slate-300 bg-gray-800 shadow-lg text-cyan-300 group relative cursor-pointer glass-card">  
           <div className="z-10  ml-auto text-cyan-200 cursor-pointer group" >
           {<img src={assets.account} alt="Logo" className="w-6 sm:w-7 cursor-pointer" />}
           {<div className="absolute hidden group-hover:block top-1.5 text-black rounded pt-12 shadow-3xl">
             <ul className="list-none p-2 bg-cyan-200 text-sm rounded-xl glass-card">
-            <li onClick={() => navigate('/bifrost')} className="py-2 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">BIFROST</li>
+            <li onClick={() => navigate('/bifrost')} className="py-1.5 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">Bifrost</li>
+            <li onClick={() => navigate('/settings')} className="py-1.5 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">Settings</li>
             <li onClick={()=> {navigate('/reset')}} className="py-1.5 px-4 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl">Reset</li>
             {isLoggedIn==='T' && <li onClick={()=>{logout();navigate('/');}} className="py-1.5 px-4 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl">Logout</li>}
             </ul>
@@ -51,8 +58,8 @@ const Navbar = () => {
             <ul className="list-none p-2 bg-cyan-200 text-sm rounded-xl glass-card">
             {isLoggedIn!=='T' && <li onClick={()=>navigate('/bifrost')} className="py-1.5 px-4 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl">BIFROST</li>}
             {/* <li onClick={() => navigate('/stats')} className="py-1.5 px-4 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">Stats</li> */}
-            <li onClick={() => navigate('/fats')} className="py-2 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">FAQs</li>
-            <li onClick={() => navigate('/contact')} className="py-2 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">Contact</li>
+            <li onClick={() => navigate('/fats')} className="py-1.5 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">FAQs</li>
+            <li onClick={() => navigate('/contact')} className="py-1.5 px-1.5 m-2 flex justify-center shadow-md bg-gray-100 cursor-pointer rounded-full hover:shadow-xl ">Contact</li>
             </ul>
           </div>}
       </button>

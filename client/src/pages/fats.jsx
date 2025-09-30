@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 const FAQAndHowTo = () => {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
@@ -16,9 +17,9 @@ const FAQAndHowTo = () => {
         "Neokey doesn't store your passwords or any sensitive data thus minimizing attack surfaces! It uses specific algorithms to generate your passwords only when requested, along with advanced encryption for secure data transmission and MFA to ensure secure access. Rest assured, no one knows your passwords, Literally!",
     },
     {
-      question: "Can I generate multiple passwords for the same service?",
+      question: "Can I generate new passwords multiple times for the same service?",
       answer:
-        "Absolutely! Neokey allows you to generate unlimited unique passwords for the same service, always retrieving the latest one.",
+        "Absolutely! Neokey allows you to generate unlimited unique new passwords for the same service, always retrieving the latest one.",
     },
     {
       question: "What happens if I lose my Neokey { Master password } ?",
@@ -28,7 +29,7 @@ const FAQAndHowTo = () => {
     {
       question: "What's BIFROST?",
       answer:
-        "BIFROST lets you log in on any device using a simple 4-digit code, initiating a time-limited session that lasts 15 minutes. It’s a fast, reliable solution for seamless multi-device access.",
+        "BIFROST lets you log in on any device using a simple 4-digit code, initiating a replicated time-limited session that lasts 15 minutes. It’s a fast, reliable solution for seamless multi-device access.",
     }    
   ];
 
@@ -45,7 +46,7 @@ const FAQAndHowTo = () => {
   };
 
   return (
-    <div className='autocomplete="off" bg-gradient-to-b from-cyan-700 to-slate-100 animate-pulse-smooth text-gray-900 font-sans min-h-screen select-none'>
+    <div className='autocomplete="off" bg-gradient-to-b from-cyan-600 to-cyan-700 animate-pulse-smooth text-gray-900 font-sans min-h-screen select-none'>
       {/* Navbar Integration */}
       <Navbar />
 
@@ -61,7 +62,7 @@ const FAQAndHowTo = () => {
 
         <section>
           <h2 className="text-2xl font-semibold mb-6">How to Use Neokey</h2>
-          <ol className="list-decimal list-inside space-y-4 text-lg text-gray-800">
+          <ol className="list-decimal list-inside space-y-4 text-lg text-white">
             {howToSteps.map((step, index) => (
               <li key={index}>{step}</li>
             ))}
@@ -72,16 +73,16 @@ const FAQAndHowTo = () => {
           <h2 className="text-2xl font-semibold mb-6">Frequently Asked Questions</h2>
           <div className="space-y-4">
             {faqs.map((faq, index) => (
-              <div key={index} className="border-b border-gray-300 pb-4">
+              <div key={index} className="border-b border-black pb-4">
                 <button
                   onClick={() => toggleQuestion(index)}
-                  className="w-full rounded-md text-left flex justify-between items-center text-lg font-medium focus:outline-none"
+                  className="w-full rounded-md text-left flex justify-between items-center text-lg font-medium "
                 >
                   {faq.question}
                   <span>{selectedQuestion === index ? "-" : "+"}</span>
                 </button>
                 {selectedQuestion === index && (
-                  <p className="mt-3 text-gray-700">{faq.answer}</p>
+                  <p className="mt-3 text-gray-200">{faq.answer}</p>
                 )}
               </div>
             ))}
@@ -90,9 +91,9 @@ const FAQAndHowTo = () => {
 
       </main>
 
-      <footer className="w-full text-center py-4 border-t border-gray-300 mt-16">
-      <p className="text-gray-600 text-xs"> © 2025 NeoKey™ </p>
-      </footer>
+      <div className="mt-auto pt-2 text-gray-400 ">
+      <Footer />
+      </div>
     </div>
   );
 };

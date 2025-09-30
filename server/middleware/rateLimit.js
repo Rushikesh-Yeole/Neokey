@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 export const authLimiter = rateLimit({
   windowMs: 3 * 60 * 1000,
   max: 7,
-  keyGenerator: (req) => req.body.cryptemail || req.ip, // Prioritize email if available, fallback to IP
+  keyGenerator: (req) => req.body.cryptemail || req.ip, // Prioritize email if available,fallback to IP
   handler: (req, res) => {
     res.status(429).json({ success: false, message: 'Too many login attempts. Try again in few minute.' });
   },

@@ -11,7 +11,7 @@ const sheets = google.sheets({ version: "v4", auth });
 export const contact = async (req, res) => {
   const { message, email, emoji } = req.body;
   if (!message) {
-    return res.status(400).json({ success: false, message: "You're missing the message itself" });
+    return res.status(400).json({ success: false, message: "You're missing the message itself!" });
   }
   try {
     await sheets.spreadsheets.values.append({

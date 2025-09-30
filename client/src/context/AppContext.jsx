@@ -6,15 +6,22 @@ export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
 
-  const backendUrl = "https://neokeybts.onrender.com";//Prod
-  // const backendUrl = import.meta.env.VITE_BACKEND_URL;//Develop
+  const backendUrl = import.meta.env.VITE_BACKEND;//Prod
+  // const backendUrl = import.meta.env.VITE_LOCAL_BACKEND;//Develop
 
   const [isLoggedIn, setIsLoggedIn] = useState("N");
+  const [authAccess, setAuthAccess] = useState(true);
   const [publicKey, setPublicKey] = useState(null);
+  const [userServices, setUserServices] = useState([]);
+  const [alias, setAlias] = useState("...");
 
   useEffect(() => {
     axios.defaults.withCredentials = true;
-    if(isLoggedIn ==='N'){getAuthState()};
+    const interval = setInterval(() => {
+      if(isLoggedIn ==='N'){
+      getAuthState()};
+      clearInterval(interval);
+    }, 1500);
   }, [isLoggedIn]);
 
 
@@ -35,22 +42,36 @@ export const AppContextProvider = (props) => {
     }
   };
 
+  const fetchServices = async () =>
+  
+    axios.get(`${backendUrl}/user/services`)
+    .then(({ data }) => {setUserServices(data.services || []);setAlias(data.alias || "User")})
+    .catch(() => setUserServices([]));
+
+  useEffect(() => {
+  isLoggedIn==='T' && fetchServices();
+  }, [isLoggedIn]);
+
+
   useEffect(() => {
     if (!publicKey) {
-      warm();
       fetchPublicKey();
+      access();
     }
   }, [publicKey]);
-  
-  const warm = async () => {
-    let response = await axios.head(`${backendUrl}/user/services`);
-    if(response.status===200){console.log(`All systems are a go, Sir.`)}else{console.log(`Seems the systems are down, Sir.`)}
+
+  const access = async () => {
+    const {data} = await axios.get(`${backendUrl}/admin/access`);
+    if(!data.success){
+      setAuthAccess(false);
+      console.log(`Seems authentication systems are down, Sir.`);
+    }
   }
 
   const fetchPublicKey = async () => {
     try {
       let response = await axios.get(backendUrl + '/user/public-key');
-      if(response.data.publicKey){console.log(`Comms are fully operational.`)}else{console.log(`No PublicKey`)};
+      if(response.data.publicKey){console.log(`Comms are fully operational.`)}else{toast.error(`Comms have failed. Please contact us`)};
       setPublicKey(response.data.publicKey);
     } catch (error) {
       console.error("Error fetching public key", error);
@@ -60,8 +81,14 @@ export const AppContextProvider = (props) => {
   const value = {
     publicKey,
     backendUrl,
+    authAccess,
+    setAuthAccess,
     isLoggedIn,
-    setIsLoggedIn
+    setIsLoggedIn,
+    userServices,
+    setUserServices,
+    fetchServices,
+    alias
   };
 
   return (

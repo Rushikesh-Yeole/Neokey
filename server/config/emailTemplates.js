@@ -244,7 +244,7 @@ export const RESETMAIL = `<!DOCTYPE html>
               <tr>
                 <td class="sub-header">
                   Your account password was recently changed. If this was you, you can ignore this email.<br /><br />
-                  <em>Please note:</em> A password reset means that if you did not authorize this change, an attacker may have had access not only to your previous password but also to your email account. We strongly recommend reviewing your email security settings immediately.
+                  <em>Please note:</em> A password reset means that if you did not authorize this change, an attacker may have had access not only to your previous Neokey password, but also to your <strong>email account</strong>. We strongly recommend reviewing your email security settings immediately.
                 </td>
               </tr>
               <tr>

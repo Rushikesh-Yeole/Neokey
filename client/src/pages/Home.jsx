@@ -5,41 +5,46 @@ import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { encrypt } from "../components/aesbox";
+import { bhash, encrypt, hash} from "../components/aesbox";
 import Footer from "../components/Footer";
 
 const Home = () => {
-  const { backendUrl, isLoggedIn, publicKey } = useContext(AppContext);
+  const { backendUrl, isLoggedIn, publicKey, userServices, setUserServices, fetchServices } = useContext(AppContext);
   const navigate = useNavigate();
   const [render, setRender] = useState(true);
   const [selectedService, setSelectedService] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
-  const [userServices, setUserServices] = useState([]);
   const [password, setPassword] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [loadR, setLoadR] = useState(false);
   const [loadC, setLoadC] = useState(false);
   const [key, setKey] = useState("");
   const accountOptions = ["Instagram", "Snapchat", "Google", "Facebook", "X", "LinkedIn"];
-  
+  const [scope, setScope] = useState(`16`);
+  const sections = [`08`, `16`, `20`];
+
+  const switchScope = (len) => {
+    setScope(len);
+    };
+
   const scrollToBottom = () => {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
-      behavior: 'smooth' // Smooth scrolling animation
+      behavior: 'smooth'
     });
   };
 
   useEffect(() => {
     const checkAuthState = async () => {
-      // Polling interval to recheck `isLoggedIn`
-      const interval = setInterval(() => {
+      const interval = setInterval(async () => {
         if (isLoggedIn != 'N') {
           setRender(false);
           clearInterval(interval);
         }}, 1000);
     };
     window.scrollTo(0, 0);
+    
     if(isLoggedIn=='N'){checkAuthState();}else{setRender(false)};
   }, [isLoggedIn]);
 
@@ -56,29 +61,19 @@ const Home = () => {
       toast.error('Failed to Retrieve. Contact Us.');
     }
   };
-
-  // Fetch user-defined services
-  const fetchServices = async () =>
-    axios.get(`${backendUrl}/user/services`)
-      .then(({ data }) => {setUserServices(data.services || []);})
-      .catch(() => setUserServices([]));
-
-  useEffect(() => {
-  isLoggedIn==='T' && fetchServices();
-  }, [isLoggedIn]);
   
 // Merge accountOptions and userServices, prefer accountOptions, and remove case-insensitive duplicates
 const mergeServices = () => [
   ...accountOptions,
   ...userServices
     .filter(service => !accountOptions.some(opt => opt.toLowerCase() === service.toLowerCase()))
-    .map(service => service.charAt(0).toUpperCase() + service.slice(1).toLowerCase()) // Capitalize userServices
+    .map(service => service.charAt(0).toUpperCase() + service.slice(1).toLowerCase())
 ];
 
 // Spell correction function
 const correctSpelling = (input) => {
   let allServices = mergeServices();
-  return allServices.find(service => service.toLowerCase().includes(input.toLowerCase()) && input.length > 2) || input;
+  return allServices.find(service => service.toLowerCase().includes(input.toLowerCase()) && input.length > 1) || input;
 };
 
 // Handle input change and filter suggestions
@@ -94,28 +89,37 @@ const handleInputChange = (e) => {
   };
 
   // Handle focus loss and auto-correct the service name
-  const handleBlur = () => {
+  // const handleBlur = () => {
+  //   setSelectedService(correctSpelling(selectedService));
+  //   // setSelectedService(selectedService);
+  //   setIsFocused(false);
+  // };
+
+  const handleKeyDown = (e) => {
+  if (e.altKey && e.key.toLowerCase() === "a") {
+    e.preventDefault();
     setSelectedService(correctSpelling(selectedService));
-    setIsFocused(false);
-  };
+  }
+};
 
   const handleAction = async (action) => {
     if(!publicKey){toast.error(`Comms are Down, Contact Us`); return;}
     try {
-      let crypttimestamp = "";
+      let timestamp = "";
       let start = performance.now();
       let lock = selectedService.trim().toLowerCase();
       if(!password || !lock){return toast.error(`Enter Requirements`,{ autoClose: 700})};
       if(action==='retrieve'){setLoadR(true);}
       else{
         setLoadC(true);
-        let timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16);
-        crypttimestamp = encrypt(timestamp, publicKey);
+        timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16);
+        timestamp = scope+bhash(timestamp);
       };
-      let cryptpassword = encrypt(password, publicKey);
+      let cryptpassword = hash(password, localStorage.getItem("email"));
       let cryptlock = encrypt(lock, publicKey);
+      let cryptsalt = encrypt(localStorage.getItem("email"), publicKey);
       
-      let { data } = await axios.post(`${backendUrl}/user/${action}`, { cryptpassword, cryptlock, crypttimestamp });
+      let { data } = await axios.post(`${backendUrl}/user/${action}`, { cryptpassword, cryptlock, timestamp, cryptsalt });
       let end = performance.now();
       let timeTaken = end - start;
       console.log(`${action} time : ${timeTaken.toFixed(2)} ms`);
@@ -127,8 +131,8 @@ const handleInputChange = (e) => {
           setKey(data.key);
           delete data.key;
         }else{fetchServices()};
-        toast.success(data.message,{ autoClose: 1500});
-        await axios.head(`${backendUrl}/admin/${action}d`)
+        toast.success(data.message,{ autoClose: 1700});
+        axios.head(`${backendUrl}/admin/${action}d`).catch(()=>{});
       } else {
           setLoadR(false);
           setLoadC(false);
@@ -142,12 +146,12 @@ const handleInputChange = (e) => {
   };
 
   const Banner = () => (
-  <section className="hidden md:block mt-16 mb-8 mr-20 items-center px-10 md:px-20">
+  <section className="hidden md:block mt-16 mb-8 mr-32 items-center px-10 md:px-20">
     <div className="max-w-3xl space-y-6">
       <h1 className="text-4xl md:text-6xl font-Snapchat font-bold text-white leading-tight">
         No Vaults.<br />No Leaks.
       </h1>
-      <p className="text-lg text-gray-400">
+      <p className="md:text-xl text-gray-400">
         Secure your Digital Keys.
       </p>
       <div className="flex gap-4">
@@ -175,11 +179,12 @@ const handleInputChange = (e) => {
             value={selectedService}
             onChange={handleInputChange}
             onFocus={() => setIsFocused(true)}
-            onBlur={handleBlur} // Automatically correct spelling on blur
+            onBlur={() => setIsFocused(false)}
+            onKeyDown={handleKeyDown}
           />
           {selectedService && isFocused && suggestions.length > 0 && (
-            <ul className="absolute w-full max-w-[60%] sm:max-w-[30%] bg-[#444C66] rounded-lg shadow-md mt-28 z-20 max-h-40 overflow-y-auto">
-              {suggestions.map((suggestion, index) => (
+            <ul className="absolute w-full max-w-[60%] sm:max-w-[60%] bg-[#444C66] rounded-lg shadow-md top-40 mt-1 sm:mt-8 z-20 max-h-90 overflow-y-visible">
+              {suggestions.slice(0,4).map((suggestion, index) => (
                 <li
                   key={index}
                   className="px-4 py-2 text-white hover:bg-[#555E7D] cursor-pointer text-[1.25rem]"
@@ -235,16 +240,37 @@ const handleInputChange = (e) => {
           </button>
         </div>
       </form>
-      <div className="mt-3 flex justify-between">
-      <ul onClick={scrollToBottom} className="w-full mt-3 rounded-full text-center text-pretty text-slate-500 cursor-pointer"> Geek Out Below ↓</ul>
+      <div className="mt-3 ">
+      <p className="w-full mt-3 text-center text-pretty text-slate-500 cursor-pointer">Alt+a for autocomplete</p>
+      <ul onClick={scrollToBottom} className="w-full mt-1 rounded-full text-center text-pretty text-slate-500 cursor-pointer"> Geek Out Below ↓</ul>
       </div>
     </div>
   );
 
   const confirmModal = () => (
-    <div className="fixed inset-0 bg-slate-700 bg-opacity-100 flex justify-center items-center z-50">
+     <div className="fixed inset-0 bg-slate-700 bg-opacity-100 flex justify-center items-center z-50">
       <div className="bg-slate-900 p-6 rounded-lg text-white w-80">
-        <h3 className="text-xl font-semibold mb-4">Sure about creating a new password for {selectedService}?</h3>
+        <h3 className="text-xl font-semibold mb-4">
+          Sure about creating a new password for {selectedService}?
+        </h3>
+
+        {/* === Capsular Slider === */}
+        <div className="flex justify-between mb-4">
+          <div className="relative flex-1 mx-2 bg-slate-800 rounded-full p-1 flex items-center justify-between text-sm cursor-pointer select-none">
+            {sections.map((len) => (
+              <div
+                key={len}
+                onClick={() => switchScope(len)}
+                className={`flex-1 text-center py-2 rounded-full transition-colors duration-300
+                  ${scope === len ? "bg-gradient-to-br border border-teal-glow from-sky-700 to-blue-900" : ""}
+                `}
+              >
+                {len} char
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="flex justify-between">
           <button
             id="docreate"
@@ -252,12 +278,14 @@ const handleInputChange = (e) => {
             onClick={() => {
               setShowModal(false);
               setKey("");
-              handleAction('create');
-              setTimeout(() => {document.getElementById("retrieve")?.focus();}, 100);
+              handleAction("create");
+              setTimeout(() => {
+                document.getElementById("retrieve")?.focus();
+              }, 100);
             }}
           >
             Yes
-          </button>        
+          </button>
           <button
             id="nocreate"
             className="px-12 py-2 rounded-full border border-[#00f9ff] bg-gradient-to-br from-sky-500 to-sky-950 text-white"
@@ -338,7 +366,7 @@ const featureBoxes = () => {
   ];
 
   return (
-    <div className="h-auto min-h-screen text-white flex flex-col items-center justify-center px-6 sm:px-12 lg:px-20 animate-pulse-smooth">
+    <div className="h-auto min-h-screen text-white flex flex-col items-center justify-center px-6 sm:px-20 lg:px-20 animate-pulse-smooth">
       <h1 className="w-full text-3xl sm:text-4xl font-extrabold mt-8 mb-4 text-center py-1.5 rounded-full border border-[#00f9ff] bg-cyan-100 text-slate-700">
         Why It's Different
       </h1>
@@ -386,7 +414,7 @@ const featureBoxes = () => {
     <div className="h-screen flex flex-col lg:flex-row items-center justify-center pt-16 px-6 sm:px-0 animate-pulse-smooth">
       {Banner()}
       {render ?  
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="postman-loader">
           <span className="dot"></span>
           <span className="dot"></span>
@@ -400,11 +428,15 @@ const featureBoxes = () => {
 
       {/* Third Section */}
       {!render ? featureBoxes() : null}
-      <div className="mt-auto pt-2 ">
+      <div className="w-full text-slate-400">
       {!render &&<Footer />}
       </div>
     </div>
   );
 };
+
+{/* <div className="w-full text-center text-gray-500 text-sm select-none">
+A <span className="font-semibold text-cyan-300">Rushikesh Yeole</span> Production
+</div> */}
 
 export default Home;

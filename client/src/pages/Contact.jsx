@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
 import { AppContext } from "../context/AppContext";
+import Footer from "../components/Footer";
 
 const EmojiBar = ({ selectedEmoji, setSelectedEmoji }) => {
   // const emojis = ["👏", "💡", "💢", "🚀", "🔥", "👍", "👎", "⚠", "😇", "😉"];
@@ -128,9 +129,9 @@ const ContactUs = () => {
           </form>
         </div>
       </main>
-      <footer className="w-full text-center py-4 border-t border-gray-300 mt-16">
-        <p className="text-white text-xs">© 2025 NeoKey™</p>
-      </footer>
+      <div className="w-full sm:mt-52 mt-32 text-gray-400 ">
+      <Footer />
+      </div>
     </div>
   );
 };
