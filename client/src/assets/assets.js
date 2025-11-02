@@ -12,6 +12,8 @@ import account from './account.png'
 import menu from './menu.png'
 import apps from './apps.png'
 import analytics from './analytics.png'
+import github from './github.png'
+import beta from './beta.png'
 
 export const assets = {
     arrow,
@@ -27,5 +29,7 @@ export const assets = {
     account,
     menu,
     apps,
-    analytics
+    analytics,
+    github,
+    beta
 }

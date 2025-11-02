@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
 import { AppContext } from "../context/AppContext";
+import Footer from "../components/Footer";
 
 const EmojiBar = ({ selectedEmoji, setSelectedEmoji }) => {
   // const emojis = ["👏", "💡", "💢", "🚀", "🔥", "👍", "👎", "⚠", "😇", "😉"];
@@ -74,7 +75,7 @@ const ContactUs = () => {
           We'll fix issues (if any) & respond (if necessary)
         </p>
       </header>
-      <main className="max-w-md mx-auto px-4 sm:px-6">
+      <main className="flex-grow max-w-md mx-auto px-4 sm:px-6 mb-8">
         <div className="glass-card p-4 sm:p-6 rounded-lg shadow-glass bg-white">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -109,7 +110,7 @@ const ContactUs = () => {
             {/* <p className="text-sm text-gray-300">How you feelin?</p> */}
             <EmojiBar selectedEmoji={selectedEmoji} setSelectedEmoji={setSelectedEmoji} />
 
-            {status && <p className="text-center text-sm text-gray-800">{status}</p>}
+            {status && <p className="text-center text-sm text-gray-200">{status}</p>}
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="submit"
@@ -128,9 +129,9 @@ const ContactUs = () => {
           </form>
         </div>
       </main>
-      <footer className="w-full text-center py-4 border-t border-gray-300 mt-16">
-        <p className="text-white text-xs">© 2025 NeoKey™</p>
-      </footer>
+      <div className="fixed w-full sm:mt-4 pt-2 mt-32 text-slate-400 ">
+      <Footer />
+      </div>
     </div>
   );
 };

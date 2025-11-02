@@ -5,42 +5,44 @@ import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { encrypt } from "../components/aesbox";
+import { bhash, encrypt, hash} from "../components/aesbox";
 import Footer from "../components/Footer";
+import Pops from "../components/Pops";
 
 const Home = () => {
-  const { backendUrl, isLoggedIn, publicKey } = useContext(AppContext);
+  const { backendUrl, isLoggedIn, publicKey, userServices, setUserServices, fetchServices } = useContext(AppContext);
   const navigate = useNavigate();
   const [render, setRender] = useState(true);
   const [selectedService, setSelectedService] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
-  const [userServices, setUserServices] = useState([]);
   const [password, setPassword] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [loadR, setLoadR] = useState(false);
   const [loadC, setLoadC] = useState(false);
   const [key, setKey] = useState("");
   const accountOptions = ["Instagram", "Snapchat", "Google", "Facebook", "X", "LinkedIn"];
-  
-  const scrollToBottom = () => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: 'smooth' // Smooth scrolling animation
-    });
-  };
+  const [scope, setScope] = useState(`16`);
+  const sections = [`08`, `16`, `20`];
+
+  const switchScope = (len) => {
+    setScope(len);
+    };
+
+  // const scrollToBottom = () => {
+  //   window.scrollTo({
+  //     top: document.documentElement.scrollHeight,
+  //     behavior: 'smooth'
+  //   });
+  // };
 
   useEffect(() => {
-    const checkAuthState = async () => {
-      // Polling interval to recheck `isLoggedIn`
-      const interval = setInterval(() => {
-        if (isLoggedIn != 'N') {
-          setRender(false);
-          clearInterval(interval);
-        }}, 1000);
-    };
     window.scrollTo(0, 0);
-    if(isLoggedIn=='N'){checkAuthState();}else{setRender(false)};
+if (isLoggedIn === 'N') {
+    setRender(true);
+  } else {
+    setRender(false);
+  }
   }, [isLoggedIn]);
 
   const copyToClipboard = async (text) => {
@@ -57,28 +59,24 @@ const Home = () => {
     }
   };
 
-  // Fetch user-defined services
-  const fetchServices = async () =>
-    axios.get(`${backendUrl}/user/services`)
-      .then(({ data }) => {setUserServices(data.services || []);})
-      .catch(() => setUserServices([]));
-
-  useEffect(() => {
-  isLoggedIn==='T' && fetchServices();
-  }, [isLoggedIn]);
+  function isPwa() {
+  if (window.navigator.standalone) return true;
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  return false;
+}
   
 // Merge accountOptions and userServices, prefer accountOptions, and remove case-insensitive duplicates
 const mergeServices = () => [
   ...accountOptions,
   ...userServices
     .filter(service => !accountOptions.some(opt => opt.toLowerCase() === service.toLowerCase()))
-    .map(service => service.charAt(0).toUpperCase() + service.slice(1).toLowerCase()) // Capitalize userServices
+    .map(service => service.charAt(0).toUpperCase() + service.slice(1).toLowerCase())
 ];
 
 // Spell correction function
 const correctSpelling = (input) => {
   let allServices = mergeServices();
-  return allServices.find(service => service.toLowerCase().includes(input.toLowerCase()) && input.length > 2) || input;
+  return allServices.find(service => service.toLowerCase().includes(input.toLowerCase()) && input.length > 1) || input;
 };
 
 // Handle input change and filter suggestions
@@ -91,31 +89,42 @@ const handleInputChange = (e) => {
   const handleSuggestionClick = (suggestion) => {
     setSelectedService(suggestion);
     setSuggestions([]);
+    setTimeout(()=>{document.getElementById("neokey")?.focus()},0);
   };
 
   // Handle focus loss and auto-correct the service name
-  const handleBlur = () => {
+  // const handleBlur = () => {
+  //   setSelectedService(correctSpelling(selectedService));
+  //   // setSelectedService(selectedService);
+  //   setIsFocused(false);
+  // };
+
+  const handleKeyDown = (e) => {
+  if (e.altKey && e.key.toLowerCase() === "a") {
+    e.preventDefault();
     setSelectedService(correctSpelling(selectedService));
-    setIsFocused(false);
-  };
+    setTimeout(()=>{document.getElementById("neokey")?.focus()},1);
+  }
+};
 
   const handleAction = async (action) => {
     if(!publicKey){toast.error(`Comms are Down, Contact Us`); return;}
     try {
-      let crypttimestamp = "";
+      let timestamp = "";
       let start = performance.now();
       let lock = selectedService.trim().toLowerCase();
       if(!password || !lock){return toast.error(`Enter Requirements`,{ autoClose: 700})};
       if(action==='retrieve'){setLoadR(true);}
       else{
         setLoadC(true);
-        let timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16);
-        crypttimestamp = encrypt(timestamp, publicKey);
+        timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16);
+        timestamp = scope+bhash(timestamp);
       };
-      let cryptpassword = encrypt(password, publicKey);
+      let hashPassword = hash(password, localStorage.getItem("email"));
       let cryptlock = encrypt(lock, publicKey);
+      let cryptsalt = encrypt(bhash(localStorage.getItem("email")), publicKey);
       
-      let { data } = await axios.post(`${backendUrl}/user/${action}`, { cryptpassword, cryptlock, crypttimestamp });
+      let { data } = await axios.post(`${backendUrl}/user/${action}`, { hashPassword, cryptlock, timestamp, cryptsalt });
       let end = performance.now();
       let timeTaken = end - start;
       console.log(`${action} time : ${timeTaken.toFixed(2)} ms`);
@@ -127,8 +136,7 @@ const handleInputChange = (e) => {
           setKey(data.key);
           delete data.key;
         }else{fetchServices()};
-        toast.success(data.message,{ autoClose: 1500});
-        await axios.head(`${backendUrl}/admin/${action}d`)
+        toast.success(data.message,{ autoClose: 2000});
       } else {
           setLoadR(false);
           setLoadC(false);
@@ -137,28 +145,73 @@ const handleInputChange = (e) => {
     } catch (error) {
       setLoadR(false);
       setLoadC(false);
-      toast.error(error.message,{ autoClose: 1000});
+      toast.error(error.message,{ autoClose: 1200});
     }
   };
 
   const Banner = () => (
-  <section className="hidden md:block mt-16 mb-8 mr-20 items-center px-10 md:px-20">
+    <div>
+  <section className="hidden md:block mr-32 items-center px-10 md:px-20">
     <div className="max-w-3xl space-y-6">
-      <h1 className="text-4xl md:text-6xl font-Snapchat font-bold text-white leading-tight">
+      <h1 className="text-4xl md:text-6xl font-Snapchat font-extrabold text-white leading-tight">
         No Vaults.<br />No Leaks.
       </h1>
-      <p className="text-lg text-gray-400">
-        Secure your Digital Keys.
+      <p className="md:text-lg text-pretty text-gray-400">
+        {!render && <>The password platform that never stores passwords<br />or anything about you.</>}
       </p>
       <div className="flex gap-4">
+        <p className="text-pretty text-slate-400"> 
+          {!render && <><br/>About ↓</>}
+          {!render && <span
+            onClick={() => window.showPopup({
+              title: "Use Neokey",
+              body: 'Type/select a service name → Enter master password → Create/Retrieve password & copy it! ',
+              primaryLabel: "Got it"
+            })}
+            className="ml-4 text-cyan-300 hover:underline"
+          >
+            How to ▶
+          </span>}
+        </p>
       </div>
     </div>
   </section>
+  <section className="block md:hidden px-6 mx-auto mb-4 text-xs text-gray-300 text-center">
+  {!render && (
+    <>
+      The password platform that never stores passwords, or anything about you.<br /><br />
+      ↓ About •
+      {!isPwa() && <span
+        onClick={() => window.showPopup({
+          title: "Install Neokey",
+          body: 'Open your browser menu → "Add to Home screen" to install this app.',
+          primaryLabel: "Got it"
+        })}
+        className="ml-1 text-cyan-300 hover:underline"
+      >
+        Install for better experience ⇩<br/>
+      </span>}
+            {!render && <span
+        onClick={() => window.showPopup({
+          title: "Use Neokey",
+          body: 'Type/select a service name → Enter master password → Create/Retrieve password & copy it! ',
+          primaryLabel: "Got it"
+        })}
+        className="ml-1 text-cyan-300 hover:underline"
+      >
+        ▶ How to
+      </span>}
+
+    </>
+  )}
+</section>
+
+  </div>
 );
   
   const openGate = () => (
-    <div className="glass-card p-4 sm:p-10 rounded-lg shadow-glass w-full max-w-[90%] sm:max-w-sm text-slate-700 text-sm sm:text-base">
-      <button className="w-full text-4xl font-extrabold mt-8 mb-4 text-center py-1.5 rounded-full border border-[#00f9ff] hover:bg-cyan-200 hover:text-slate-700 bg-slate-900 text-cyan-200 relative overflow-hidden">
+    <div className="glass-card px-6 sm:p-10 rounded-2xl shadow-glass w-full max-w-[90%] sm:max-w-sm text-slate-700 text-sm sm:text-base">
+      <button className="w-full text-4xl font-black mt-8 mb-4 text-center py-1.5 rounded-full border border-[#00f9ff] hover:bg-cyan-200 hover:text-slate-700 bg-slate-900 text-cyan-200 relative overflow-hidden">
         Neokey
         <span className="shiny-stripe"></span>
       </button>
@@ -175,11 +228,12 @@ const handleInputChange = (e) => {
             value={selectedService}
             onChange={handleInputChange}
             onFocus={() => setIsFocused(true)}
-            onBlur={handleBlur} // Automatically correct spelling on blur
+            onBlur={() => setIsFocused(false)}
+            onKeyDown={handleKeyDown}
           />
           {selectedService && isFocused && suggestions.length > 0 && (
-            <ul className="absolute w-full max-w-[60%] sm:max-w-[30%] bg-[#444C66] rounded-lg shadow-md mt-28 z-20 max-h-40 overflow-y-auto">
-              {suggestions.map((suggestion, index) => (
+            <ul className="absolute w-full max-w-[60%] sm:max-w-[60%] bg-[#444C66] rounded-lg shadow-md top-40 mt-1 sm:mt-8 z-20 max-h-90 overflow-y-visible">
+              {suggestions.slice(0,4).map((suggestion, index) => (
                 <li
                   key={index}
                   className="px-4 py-2 text-white hover:bg-[#555E7D] cursor-pointer text-[1.25rem]"
@@ -195,16 +249,18 @@ const handleInputChange = (e) => {
         <div className="flex items-center gap-3 w-full px-4 py-2.5 rounded-full text-black bg-slate-100">        
           <img src={assets.lock_icon} alt="" />
           <input
+            id="neokey"
             onChange={(e) => setPassword(e.target.value.trim().toLowerCase())}
             value={password}
             className="px-2 bg-transparent outline-none w-full"
             type="new-password"
             style={{ WebkitTextSecurity: "disc" }}
-            placeholder="NeoKey password"
+            placeholder="Neokey password"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
             required
+            onBlur={window.scrollTo(0, 0)}
           />
         </div>
         {/* Action buttons */}
@@ -235,16 +291,37 @@ const handleInputChange = (e) => {
           </button>
         </div>
       </form>
-      <div className="mt-3 flex justify-between">
-      <ul onClick={scrollToBottom} className="w-full mt-3 rounded-full text-center text-pretty text-slate-500 cursor-pointer"> Geek Out Below ↓</ul>
+      <div className="mt-3 ">
+      <p className="hidden sm:block w-full mt-3 text-center text-pretty text-slate-500 cursor-pointer">Alt+a for autocomplete</p>
+      {/* <p className="w-full mt-1 rounded-full text-center text-pretty text-slate-500 cursor-pointer"> Geek Out Below ↓</p> */}
       </div>
     </div>
   );
 
   const confirmModal = () => (
-    <div className="fixed inset-0 bg-slate-700 bg-opacity-100 flex justify-center items-center z-50">
-      <div className="bg-slate-900 p-6 rounded-lg text-white w-80">
-        <h3 className="text-xl font-semibold mb-4">Sure about creating a new password for {selectedService}?</h3>
+     <div className="fixed inset-0 bg-transparent/50 flex justify-center items-center z-50">
+      <div className="glass-card p-6 rounded-2xl text-white w-80">
+        <h3 className="text-xl font-semibold mb-4">
+          Sure about creating a new password for {selectedService}?
+        </h3>
+
+        {/* === Capsular Slider === */}
+        <div className="flex justify-between mb-4">
+          <div className="relative flex-1 mx-2 bg-slate-400/40 rounded-full p-1 flex items-center justify-between text-sm cursor-pointer select-none">
+            {sections.map((len) => (
+              <div
+                key={len}
+                onClick={() => switchScope(len)}
+                className={`flex-1 text-center py-2 rounded-full transition-colors duration-300
+                  ${scope === len ? "bg-gradient-to-br border border-teal-glow from-sky-700 to-blue-900" : ""}
+                `}
+              >
+                {len} char
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="flex justify-between">
           <button
             id="docreate"
@@ -252,12 +329,14 @@ const handleInputChange = (e) => {
             onClick={() => {
               setShowModal(false);
               setKey("");
-              handleAction('create');
-              setTimeout(() => {document.getElementById("retrieve")?.focus();}, 100);
+              handleAction("create");
+              setTimeout(() => {
+                document.getElementById("retrieve")?.focus();
+              }, 100);
             }}
           >
             Yes
-          </button>        
+          </button>
           <button
             id="nocreate"
             className="px-12 py-2 rounded-full border border-[#00f9ff] bg-gradient-to-br from-sky-500 to-sky-950 text-white"
@@ -271,14 +350,14 @@ const handleInputChange = (e) => {
   );
 
   const closeGate = () => (
-    <div className="glass-card shadow-glass p-10 w-full max-w-sm rounded-lg shadow-2xl text-indigo-300 text-sm">
-      <button className="w-full text-4xl font-extrabold mt-2 mb-8 text-center py-2 rounded-full border border-[#00f9ff] hover:bg-cyan-200 hover:text-slate-700 bg-slate-900 text-cyan-200 relative overflow-hidden">
+    <div className="glass-card shadow-glass p-10 w-full max-w-sm rounded-2xl shadow-2xl text-indigo-300 text-sm">
+      <button className="w-full text-4xl font-black mt-2 mb-8 text-center py-2 rounded-full border border-[#00f9ff] hover:bg-cyan-200 hover:text-slate-700 bg-slate-900 text-cyan-200 relative overflow-hidden">
         Neokey
         <span className="shiny-stripe"></span>
       </button>
-      <h2 className="block md:hidden text-center text-lg font-semibold text-gray-50">Secure your Digital Keys</h2>
-      <p className="block md:hidden text-center mb-6 text-lg font-semibold text-gray-50">No vaults. No leaks.</p>
-      <p className="hidden md:block text-center mb-6 text-lg text-gray-400">Rest assured, no one knows your passwords, Literally! </p>
+      <h2 className="block md:hidden text-center text-lg font-bold text-gray-100">Secure your Digital Keys</h2>
+      <p className="block md:hidden text-center mb-6 text-lg font-bold text-gray-100">No vaults. No leaks.</p>
+      <p className="hidden md:block text-center mb-6 text-lg font-semibold text-gray-400">Rest assured, no one knows your passwords, Literally! </p>
       <div className="flex justify-between gap-4">
           {/* <button
             className="w-full py-2.5 rounded-full hover:bg-cyan-200 border border-[#00f9ff] bg-cyan-100 text-slate-700 font-semibold"
@@ -297,9 +376,9 @@ const handleInputChange = (e) => {
           >Sign Up
           </button>
       </div>
-      <div className="flex justify-between">
-      <ul onClick={scrollToBottom} className="w-full mt-3 rounded-full text-center text-pretty text-slate-500 "> Geek Out Below ↓</ul>
-      </div>
+      {/* <div className="flex justify-between">
+      <p className="w-full mt-3 rounded-full text-center text-pretty text-slate-500 "> Geek Out Below ↓</p>
+      </div> */}
     </div>
   );
 
@@ -309,36 +388,36 @@ const featureBoxes = () => {
       img: assets.f1,
       title: "Phantom Passwords",
       description:
-        "Passwords aren't stored—our tech forges unique, HMAC-powered 16-charactered 92+ bits entropy, Robust Passwords on demand. Runtime inputs ensure secure regeneration, making unauthorized attempts impossible.",
+        "Passwords are NOT stored in any way . Our tech forges unique & robust 8-20 charactered passwords with 120+ bits entropy. Runtime determinism ensures secure regeneration, making unauthorized attempts impossible.",
     },
     {
       img: assets.f2,
       title: "Zero-Trace Architecture",
       description:
-        "No sensitive backend data storage, no attack vectors—privacy by design keeps user identities fully Anonymous to system, with no collection or retention of identifiable information.",
+        "No sensitive backend data storage, no attack vectors. Privacy by design keeps user identities truly Anonymous to system, with no collection or retention of identifiable information.",
     },
     {
       img: assets.f3,
       title: "Dynamic Key Versatility",
       description:
-        "Generate multiple unique passwords for the same service securely. Reset NeoKey without affecting previously generated passwords, ensuring seamless control.",
+        "Generate multiple unique passwords for the same service. Reset Neokey without affecting previously generated passwords, ensuring backward compatibility.",
     },
     {
       img: assets.f4,
       title: "Fortified End-to-End Security",
       description:
-        "Advanced encryption protects your data as it moves between your device and our servers, while secure email-based OTPs keep your login safe—even during longer sessions.",
+        "Advanced encryption & hashing protects (& irreversibly morphs) your data as it moves between your device and our servers, while 2FA keeps your login safe.",
     },
     {
       img: assets.f5,
       title: "Reinforced Access Control",
       description:
-        "Password generation demands the NeoKey, even during active sessions, ensuring constant security. Minimalistic design eliminates conventional attack surfaces for unparalleled protection.",
+        "Password generation demands the Neokey, even during active sessions. Minimalistic design & seamless Multi device access.",
     },
   ];
 
   return (
-    <div className="h-auto min-h-screen text-white flex flex-col items-center justify-center px-6 sm:px-12 lg:px-20 animate-pulse-smooth">
+    <div className="h-auto min-h-screen text-white flex flex-col items-center justify-center px-6 sm:px-20 lg:px-20 animate-pulse-smooth">
       <h1 className="w-full text-3xl sm:text-4xl font-extrabold mt-8 mb-4 text-center py-1.5 rounded-full border border-[#00f9ff] bg-cyan-100 text-slate-700">
         Why It's Different
       </h1>
@@ -357,15 +436,15 @@ const featureBoxes = () => {
         
         <div className="p-6 rounded-xl">
         <button
-          className="m-2 w-full py-2.5 rounded-full hover:bg-cyan-200 border border-[#00f9ff] bg-cyan-100 text-slate-700 font-medium text-lg"
+          className="m-2 w-full py-2.5 rounded-full hover:bg-cyan-200 border border-[#00f9ff] bg-cyan-100 text-slate-700 font-semibold text-lg"
           onClick={(e) => {
             e.preventDefault();
-            navigate("/fats");
+            navigate("/faqs");
           }}
         >Frequently Asked Things
         </button>
         <button
-          className="m-2 w-full py-2.5 rounded-full hover:bg-cyan-200 border border-[#00f9ff] bg-cyan-100 text-slate-700 font-medium text-lg"
+          className="m-2 w-full py-2.5 rounded-full hover:bg-cyan-200 border border-[#00f9ff] bg-cyan-100 text-slate-700 font-semibold text-lg"
           onClick={(e) => {
             e.preventDefault();
             navigate("/contact");
@@ -381,12 +460,13 @@ const featureBoxes = () => {
 
   return (
     <div className={`min-h-screen sm:px-0 select-none cursor-pointer animate-pulse-smooth ${render ? 'bg-black' : 'bg-gradient-to-b from-gray-900 via-cyan-900 to-cyan-950'}`}>
+     <Pops /> 
     {!render && <Navbar />}
       {/* First Section */}
-    <div className="h-screen flex flex-col lg:flex-row items-center justify-center pt-16 px-6 sm:px-0 animate-pulse-smooth">
+    <div className="h-screen flex flex-col lg:flex-row items-center justify-center pt-6 sm:pt-16 px-6 sm:px-0 animate-pulse-smooth">
       {Banner()}
       {render ?  
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className="postman-loader">
           <span className="dot"></span>
           <span className="dot"></span>
@@ -400,11 +480,15 @@ const featureBoxes = () => {
 
       {/* Third Section */}
       {!render ? featureBoxes() : null}
-      <div className="mt-auto pt-2 ">
+      <div className="w-full text-slate-400 ">
       {!render &&<Footer />}
       </div>
     </div>
   );
 };
+
+{/* <div className="w-full text-center text-gray-500 text-sm select-none">
+A <span className="font-semibold text-cyan-300">Rushikesh Yeole</span> Production
+</div> */}
 
 export default Home;

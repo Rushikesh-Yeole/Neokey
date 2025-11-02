@@ -23,6 +23,8 @@ const Stats = () => {
     retrievals: getLocalStorageValue('retrievals'),
     creations: getLocalStorageValue('creations'),
     engagement: getLocalStorageValue('engagement'),
+    wau: getLocalStorageValue('wau'),
+    mau: getLocalStorageValue('mau'),
   });
 
   const fetchStats = async () => {
@@ -33,6 +35,8 @@ const Stats = () => {
           retrievals = 0,
           creations = 0,
           engagementTrends = {},
+          wau = 0,
+          mau = 0,
         },
       } = await axios.get(`${backendUrl}/admin/stats`);
   
@@ -49,6 +53,8 @@ const Stats = () => {
         retrievals,
         creations,
         engagement,
+        wau,
+        mau,
       };
   
       setStats(statsObj);
@@ -104,17 +110,19 @@ const Stats = () => {
       <div className="mb-[-16px]">
       {<img src={assets.analytics} alt="Logo" className="w-9 mb-11 cursor-pointer" />}
       </div>
-      <p className="align-baseline flex-nowrap text-sm sm:text-3xl mb-7 text-gray-400">NeoKey Stats in Real-time.</p>
+      <p className="align-baseline flex-nowrap text-sm sm:text-3xl mb-7 text-gray-400">Neokey stats in Real-time.</p>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-10xl mb-10">
         {renderStatCard('Total users', `${stats.users}+`, 0)}
         {renderStatCard('Retrieved Passwords', stats.retrievals, 1)}
         {renderStatCard('Created Passwords', stats.creations, 2)}
-        {renderStatCard('90-Day User Engagement', stats.engagement, 3, 'Actions across platform')}
+        {/* {renderStatCard('90-Day User Engagement', stats.engagement, 3, 'Actions across platform')} */}
+        {renderStatCard('Weekly Active Users', `${stats.wau}+`, 3)}
+        {renderStatCard('Monthly Active Users', `${stats.mau}+`, 4)}
       </div>
       </div>
-      <div className="w-full mt-auto">
+      <div className="w-full mt-auto text-slate-400">
       <Footer />
       </div>
     </div>

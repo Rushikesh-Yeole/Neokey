@@ -1,30 +1,31 @@
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import userModel from '../models/userModel.js';
 import Bifrost from '../models/bifrostModel.js';
 import transporter from '../config/nodemailer.js';
 import { OTPMAIL, RESETMAIL } from '../config/emailTemplates.js';
-import { hash, adjustOffset, toHex, fromHex } from './magic.js';
-import { decrypt, encrypt} from "./aesbox.js";
+import { hash, adjustOffset, toHex, fromHex, bhash } from './magic.js';
+import { decrypt, symDecrypt, symEncrypt} from "./aesbox.js";
 import cron from "node-cron";
 import { randomInt } from 'crypto';
-import { deleteUserMetadata } from './cache.js';
+import { deleteUserMetadata, incMailLimit, mailAccess } from './cache.js';
+import { engaged } from './admin.js';
 
 export const sendOTP = async(cryptemail,hashAddress)=> {
     try {
         const otp = randomInt(0, 1000000).toString().padStart(6, '0');
         const address = await userModel.findOne({ address: hashAddress });
-        address.otp = hash(otp);
+        address.otp = bhash(otp);
         address.otpExpiry = Date.now()+5*60*1000;
         await address.save();
 
         const mailOption = {
             from : process.env.SENDER_EMAIL,
             to: decrypt(cryptemail), 
-            subject: 'NeoKey Access OTP',
+            subject: 'Neokey Access OTP',
             html: OTPMAIL.replace("{{otp}}", otp)
         }
         await transporter.sendMail(mailOption);
+        await incMailLimit();
         return {success:true, message: `OTP Sent`};
 
     } catch (error) {
@@ -35,21 +36,23 @@ export const sendOTP = async(cryptemail,hashAddress)=> {
 
 export const mail = async(cryptemail,S)=> {
     try {
-        
+        if (! await mailAccess()){return;}
+
         const templates = {
             "O": OTPMAIL,
             "R": RESETMAIL,
         };
-        const talk = "https://forms.gle/7ittBBRZJ337ZKw57";
+        const talk = "https://neokey.onrender.com/#/contact";
         const template = (templates[S] || DEFAULTMAIL).replace("{{contact_link}}", talk)
         
         const mailOption = {
             from : process.env.SENDER_EMAIL,
             to: decrypt(cryptemail), 
-            subject: 'NeoKey Access OTP',
+            subject: 'Neokey Teams',
             html: template
         }
         await transporter.sendMail(mailOption);
+        await incMailLimit();
         return {success:true};
 
     } catch (error) {
@@ -66,24 +69,25 @@ export const gate = async (req,res)=>{
             return res.json({ success: false, message: 'Incomplete Credentials' });}
 
         const hashAddress= hash(decrypt(cryptemail));
-        const hashUser = hash(decrypt(cryptpassword));
+        const hashUser = hash(cryptpassword);
 
         let address = await userModel.findOne({ address: hashAddress });
         let knull= false;
         let chk = false;
         if (address){
-            chk = await bcrypt.compare(hashUser, address.user);
+            chk = (hashUser === address.user);
             knull = !address.isAccountVerified}
 
         if (!address) {
-            const key = await bcrypt.hash(hashUser,Number(process.env.BRIMS))
-            address = new userModel({ address:hashAddress, user:key });
+            // const key = await bcrypt.hash(hashUser,Number(process.env.BRIMS))
+            address = new userModel({ address:hashAddress, user:hashUser });
             await address.save();
             const otpResponse = await sendOTP(cryptemail, hashAddress);
             return res.json(otpResponse);
         }
         if (knull){
-            address.user = await bcrypt.hash(hashUser,Number(process.env.BRIMS))
+            // address.user = await bcrypt.hash(hashUser,Number(process.env.BRIMS))
+            address.user = hashUser;
             await address.save();
             const otpResponse = await sendOTP(cryptemail, hashAddress);
             return res.json(otpResponse);
@@ -98,23 +102,23 @@ export const gate = async (req,res)=>{
 
     }
     catch (error){  
-        return res.json({success:false, message: error.message || `Minor Glitch. Contact Us`})
+        return res.status(500).json({success:false, message: error.message || `Minor Glitch. Contact Us`})
     }
 }
 
 export const verifyEmail = async(req,res)=>{
-    const { cryptemail, cryptpassword, cryptotp} = req.body;
+    const { cryptemail, cryptpassword, cryptotp, cryptsalt} = req.body;
     if(!cryptemail || !cryptpassword || !cryptotp){
         return res.json({success:false, message: "Incomplete Credentials"});
     }
-    const otp = hash(decrypt(cryptotp));
+    const otp = cryptotp;
     try {
         const hashAddress= hash(decrypt(cryptemail));
-        const hashUser = hash(decrypt(cryptpassword))
+        const hashUser = hash(cryptpassword);
         
-        const address = await userModel.findOne({address: hashAddress, });
+        const address = await userModel.findOne({address: hashAddress});
         if(!address){return res.json({success:false, message: `Invalid Credentials`});}
-        const chk = await bcrypt.compare(hashUser, address.user);
+        const chk = (hashUser === address.user);
 
         if(!chk){
             return res.json({success:false, message: `Invalid Credentials`});
@@ -128,18 +132,19 @@ export const verifyEmail = async(req,res)=>{
 
         address.otp='';
         address.otpExpiry=0;
-        if(address.offset==""){address.offset = encrypt("")}
+        if(address.offset==""){address.offset = symEncrypt("",decrypt(cryptsalt))}
         address.isAccountVerified=true;
         address.markModified('otp');
         address.markModified('otpExpiry');
         address.markModified('offset');
         await address.save();
 
-        const token=jwt.sign({id: address._id}, process.env.JWT_SECRET, {expiresIn: '45d'});
+        const token=jwt.sign({id: address._id}, process.env.SALT, {expiresIn: '45d'});
+        engaged('login');
         return res.json({success:true, message: `Access Granted`, token});
 
     } catch (error) {
-        return res.json({success:false, message: error.message});
+        return res.status(500).json({success:false, message: error.message});
     }
 }
 
@@ -148,7 +153,6 @@ export const resetOTP = async(req,res)=>{
     if(!cryptemail){
         return res.json({success:false, message: "Incomplete Credentials"});
     }
-    
     try {
         const hashAddress= hash(decrypt(cryptemail));
         
@@ -159,22 +163,22 @@ export const resetOTP = async(req,res)=>{
         return res.json(otpResponse);
 
     } catch (error) {
-        return res.json({success:false, message: error.message});
+        return res.status(500).json({success:false, message: error.message});
     }
 }
 
 export const reset = async(req,res)=>{
-    const {userId, cryptemail, cryptpassword, cryptotp} = req.body;
+    const {cryptemail, cryptpassword, cryptotp, cryptsalt} = req.body;
     if(!cryptemail || !cryptpassword || !cryptotp){
         return res.json({success:false, message: "Incomplete Credentials"});
     }
     
-    const otp = hash(decrypt(cryptotp));
+    const otp = cryptotp;
     try {
         const hashAddress= hash(decrypt(cryptemail));
-        const hashUser = hash(decrypt(cryptpassword))
+        const hashUser = hash(cryptpassword);
         
-        const address = await userModel.findOne({address: hashAddress, });
+        const address = await userModel.findOne({address: hashAddress});
         if(!address){return res.json({success:false, message: `Invalid Credentials`});}
 
         if(address.otp === '' || address.otp!== otp){
@@ -189,8 +193,9 @@ export const reset = async(req,res)=>{
         address.otpExpiry=0;
         address.isAccountVerified=true;
         await mail(cryptemail,"R");
-        const key = await bcrypt.hash(hashUser,Number(process.env.BRIMS));
-        address.offset = encrypt(toHex(adjustOffset(key, address.user, fromHex(decrypt(address.offset)))));
+        // const key = await bcrypt.hash(hashUser,Number(process.env.BRIMS));
+        const key = hashUser;
+        address.offset = symEncrypt(toHex(adjustOffset(key, address.user, fromHex(symDecrypt(address.offset,decrypt(cryptsalt))))),decrypt(cryptsalt));
         address.user = key;
     
         address.markModified('otp');
@@ -199,31 +204,33 @@ export const reset = async(req,res)=>{
         address.markModified('offset');
         await address.save();
 
-        const token=jwt.sign({id: address._id}, process.env.JWT_SECRET, {expiresIn: '60d'});
-        try { await deleteUserMetadata(userId); } catch (e) {console.log(e);}
+        const token=jwt.sign({id: address._id}, process.env.SALT, {expiresIn: '60d'});
+        try { await deleteUserMetadata(address._id); } catch (e) {console.log(e);}
+        engaged('reset');
         return res.json({success:true, message: `Password Reset`, token});
 
     } catch (error) {
-        return res.json({success:false, message: error.message});
+        return res.status(500).json({success:false, message: error.message});
     }
 }
 
 export const bifrost = async(req,res) => {
-    const {userId} = req.body;
+    const {userId, cryptmail} = req.body;
     if(!userId){return res.json({success:false, message: "Incomplete Credentials"});}
 
     try {
-        const gentoken = encrypt(jwt.sign({id: userId}, process.env.JWT_SECRET, {expiresIn: '15m'}));
+        const gentoken = symEncrypt(jwt.sign({id: userId}, process.env.SALT, {expiresIn: '30m'}));
         while(true){
             try {
                 const gencode = randomInt(0, 10000).toString().padStart(4, '0');
-                await Bifrost.create({ code: gencode , token: gentoken, expiresAt: new Date(Date.now() + 1 * 60 * 1000) });
+                await Bifrost.create({ code: gencode , token: gentoken, user: cryptmail, expiresAt: new Date(Date.now() + 1 * 60 * 1000) });
+                engaged('bifrost');
                 return res.json({success:true, message: `Bifrost Opened`, code: gencode});
             } catch (error) {
                 if (error.code !== 11000) throw error;
             }}
     } catch (error) {
-        return res.json({success:false, message: error.message});
+        return res.status(500).json({success:false, message: error.message});
     }
 };
 
@@ -232,18 +239,19 @@ export const closeBifrost = async(req,res) => {
     if(!code){return res.json({success:false, message: "No codes"});}
 
     try {
-        const bifrost = await Bifrost.findOneAndDelete(
+        let bifrost = await Bifrost.findOneAndDelete(
             { code: code },
-            { projection: { token: 1, expiresAt:1, _id: 0 } }
+            { projection: { token: 1, user:1, expiresAt:1, _id: 0 } }
         );
 
         if (!bifrost || new Date() > new Date(bifrost.expiresAt)){ 
             return res.json({ success: false, message: "Bifrost Unaccessible" });
         }
-        const gentoken = decrypt(bifrost.token);
-        return res.json({success:true, message: `Bifrost entered`, token: gentoken});
+        let gentoken = symDecrypt(bifrost.token);
+        let mail = decrypt(bifrost.user);
+        return res.json({success:true, message: `Bifrost entered`, token: gentoken, mail});
     } catch (error) {
-        return res.json({success:false, message: error.message});
+        return res.status(500).json({success:false, message: error.message});
     }
 };
 

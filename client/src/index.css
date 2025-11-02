@@ -65,7 +65,7 @@
   @apply bg-gradient-to-r from-cyan-300 to-cyan-600;
   background-repeat: no-repeat;
   background-size: 0% 100%;
-  animation: loading-fill 2.4s linear forwards;
+  animation: loading-fill 1s linear forwards;
 }
 
 /* Make sure the parent container has a relative position */
@@ -315,7 +315,7 @@ html, body {
 .glass-card {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 0px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Glass container effect for feature boxes */

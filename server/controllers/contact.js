@@ -11,7 +11,7 @@ const sheets = google.sheets({ version: "v4", auth });
 export const contact = async (req, res) => {
   const { message, email, emoji } = req.body;
   if (!message) {
-    return res.status(400).json({ success: false, message: "You're missing the message itself" });
+    return res.status(400).json({ success: false, message: "You're missing the message itself!" });
   }
   try {
     await sheets.spreadsheets.values.append({
@@ -25,6 +25,6 @@ export const contact = async (req, res) => {
     return res.json({ success: true, message: "Message Sent!" });
   } catch (error) {
     console.error("Error receiving message:", error);
-    return res.status(500).json({ success: false, message: "Failed to send message" });
+    return res.json({ success: false, message: "Failed to send message" });
   }
 };

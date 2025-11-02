@@ -5,7 +5,7 @@ import { AppContext } from "../context/AppContext";
 import axios from 'axios';
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
-import { encrypt } from "../components/aesbox";
+import { bhash, encrypt, hash } from "../components/aesbox";
 import Footer from "../components/Footer";
 
 const Login = () => {
@@ -68,23 +68,23 @@ const Login = () => {
         toast.error("Passwords don't match.");
         return;
       }
-      const cryptemail = encrypt(email, publicKey);
-      const cryptpassword = encrypt(password, publicKey);
-      const cryptotp = encrypt(otpString, publicKey);
-      
-      const { data } = await axios.post(backendUrl + '/auth/reset', { cryptemail, cryptpassword, cryptotp });
+      let cryptemail = encrypt(email, publicKey);
+      let cryptpassword = hash(password, email);
+      const cryptotp = bhash(otpString);
+      let cryptsalt = encrypt(bhash(email), publicKey);
+      const { data } = await axios.post(backendUrl + '/auth/reset', { cryptemail, cryptpassword, cryptotp, cryptsalt });
       if (data.success) {
         localStorage.setItem("email", email);
         localStorage.setItem("token", data.token);
+        axios.defaults.headers["Authorization"] = `Bearer ${data.token}`;
         
-        await axios.post(`${backendUrl}/admin/engage`, { action:`reset`});
-        toast.success(data.message, {autoClose: 300,
+        toast.success(data.message, {autoClose: 500,
           onClose: () => {
           setIsLoggedIn('T');
           setPassword("");
           setOtp(['', '', '', '', '', ''])
           navigate('/');
-          window.location.reload();}
+          }
         });
       } else {
         toast.error(data.message,{ autoClose: 1000});
@@ -132,18 +132,18 @@ const Login = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen pt-16 sm:pt-24 px-6 sm:px-6 bg-gradient-to-br from-gray-900 to-cyan-900 select-none animate-pulse-smooth">
     <Navbar />
-    <div className="glass-card shadow-glass mt-20 p-6 sm:p-10 rounded-lg shadow-lg w-full max-w-sm sm:max-w-md text-white text-sm">
-      <h2 className="text-3xl font-bold text-center mb-3">Reset NeoKey</h2>
+    <div className="glass-card shadow-glass mb-auto mt-20 p-6 sm:p-10 rounded-lg shadow-lg w-full max-w-sm sm:max-w-md text-white text-sm">
+      <h2 className="text-3xl font-bold text-center mb-3">Reset Neokey</h2>
 
       <form onSubmit={e => (e.preventDefault(), setOtp(['', '', '', '', '', '']), onSubmitHandler(e))} className="space-y-4">
       <div className="flex items-center gap-3 w-full px-4 py-2.5 rounded-full text-white bg-slate-900">
         <img src={assets.mail_icon} alt="" />
         <input
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
           value={email}
           className="bg-transparent outline-none w-full"
           type="email"
-          placeholder="Email ID"
+          placeholder="Email"
           autoComplete="username"
           required
           style={{ overflowX: 'scroll', whiteSpace: 'nowrap' }}
@@ -206,7 +206,7 @@ const Login = () => {
     { <button type="submit" className={`font-size: 16px w-full py-2.5 rounded-full border border-[#00f9ff] shadow-sm text-white font-medium ${isLoading? "loading-bar":"" } `}>{isSent? "Re-send OTP":"Send OTP" }</button>}
       </form>
       </div>
-      <div className="w-full mt-auto ">
+      <div className="w-full mt-auto text-slate-400">
       <Footer />
       </div>
     </div>

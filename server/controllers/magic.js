@@ -1,10 +1,14 @@
 import crypto from 'crypto';
+import { blake3 } from '@noble/hashes/blake3';
+import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 
 export const hash = (data) => {
   for (let i = 0; i < Math.floor(Number(process.env.RIMS) / 10); i++) 
     data = crypto.createHmac('sha256', process.env.SALT).update(data).digest('hex');
   return data;
 };
+
+export const bhash = (data) => bytesToHex(blake3(utf8ToBytes(data)));
 
 export const rim = (data) => {
   for (let i = 0; i < Number(process.env.RIMS); i++) 
@@ -34,41 +38,27 @@ export const useOffset = (input, offset = '') =>
   ).join('');
 
 // Cookery
-export const cook = (base, serv, tm) => {
-  let food = (serv.toString().trim().toLowerCase()) + (base.toString().trim().toLowerCase())
+export const cook = (base, serv, tm, salt) => {
+  const food = (serv.toString()) + (base.toString()) ;
+  const hash = rim((food + tm.toString() + salt.toString() + process.env.SALT));
 
-  let hash = rim((food + tm.toString() + process.env.SALT).toLowerCase());
-
-  let ascSum = [...hash].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  const ascSum = [...hash].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
   let num = [...hash].filter((ch) => /\d/.test(ch));
   let alp = [...hash].filter((ch) => /[a-zA-Z]/.test(ch));
+  if(!num.length) num = [(hash.slice(-1)[0].charCodeAt(0)*17)%10];
+  if(alp.length < 2){ alp=[...(hash.slice(-2))].map(c=>String.fromCharCode(65+((c.charCodeAt(0)*7)%26)+((c.charCodeAt(0)*13)%2)*32));};
 
-  const nl = num.length, al = alp.length;
-  let [i, j] = [ascSum % nl, ascSum % al];
-  const nums = [], alps = [];
-
-  while (nums.length < 8 || alps.length < 8) {
-    nums.push(num[i]);
-    alps.push(alp[j]);
-    i = (i + 1) % nl;
-    j = (j + 1) % al;
-  }
-
-  // let allowedChars = "!#$%*+-./:<=>?@[]^_{|}~" + "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz";
-  let allowedChars = "!#%*+,-./:;<=>?^_`{|}~()[]" + "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" ;
-  let key = allowedChars[(Number(tm.slice(6,8) + ascSum)) % 32];
-  key += alps.shift().toUpperCase();
-  key += nums.shift().toUpperCase();
-  key += alps.shift().toLowerCase();
+  const allowedChars = "!#%*+,-./:;<=>?^_`{|}~()[]" + "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" ;
+  let key = allowedChars[(ascSum) % 25];
+  key += alp.shift().toUpperCase();
+  key += num.shift();
+  key += alp.shift().toLowerCase();
   
+  let dish = [...hash];
   let ctr = 0;
-  for (let k = 0; k < 6; k++) {
-    ctr += String(nums[k % nums.length]).charCodeAt(0);
-    key += allowedChars[ctr % allowedChars.length];
-    
-    ctr += alps[k % alps.length].charCodeAt(0);
+  for (let k = 0; k < 16; k++) {
+    ctr += String(dish[k % dish.length]).charCodeAt(0);
     key += allowedChars[ctr % allowedChars.length];
   };
-
   return key;
 };
