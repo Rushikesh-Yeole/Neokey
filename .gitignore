@@ -1,0 +1,9 @@
+/server/.env
+/server/env.yaml
+/client/.env
+run.txt
+/.vscode
+clean.ps1
+/server/controllers/toolkit
+client/node_modules/
+server/node_modules/

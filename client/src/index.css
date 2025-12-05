@@ -1,0 +1,367 @@
+/* Importing Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+/* Tailwind CSS Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Font Style */
+* {
+  font-family: "Outfit", sans-serif;
+}
+
+/* Disable scroll */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Keyframes for the glowing background animation */
+@keyframes willowGlow {
+  0% {
+    background-position: 0% 50%;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.7); /* teal */
+  }
+  50% {
+    background-position: 100% 50%;
+    box-shadow: 0 0 60px rgba(0, 255, 255, 0.9); /* bright teal */
+  }
+  100% {
+    background-position: 0% 50%;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.7); /* teal */
+  }
+}
+
+/* Custom Animation Class for Glowing Background */
+.animate-willow-glow {
+  background-size: 400% 400%;
+  animation: willowGlow 15s ease-in-out infinite;
+  opacity: 0.8; /* Slightly reduced opacity for the glow */
+}
+
+/* Smooth Pulse Animation */
+@keyframes pulse-smooth {
+  0% { opacity: 0.9; }
+  50% { opacity: 1; }
+  100% { opacity: 0.9; }
+}
+
+.animate-pulse-smooth {
+  animation: pulse-smooth 6s ease-in-out infinite;
+}
+
+/* Keyframes for the loading bar filling animation */
+@keyframes loading-fill {
+  from {
+    background-size: 0% 100%; /* Start with no fill */
+  }
+  to {
+    background-size: 100% 100%; /* Fully filled */
+  }
+}
+
+/* Loading Bar Class */
+.loading-bar {
+  @apply bg-gradient-to-r from-cyan-300 to-cyan-600;
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  animation: loading-fill 1s linear forwards;
+}
+
+/* Make sure the parent container has a relative position */
+.parent-container {
+  position: relative;
+  width: 100%; /* Full width */
+  height: 100vh; /* Or whatever height your container should be */
+}
+
+/* Wavelength styling */
+.wavelength {
+  position: absolute;
+  left: 0;
+  width: 100%; /* Full width by default */
+  height: 5px; /* Adjust the thickness of the wave */
+  background: linear-gradient(90deg, #fff 25%, #333 50%, #fff 75%);
+  background-size: 200% 100%;
+  animation: wave 4s ease-in-out infinite; /* Wave animation */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* Optional: Glowing effect */
+  top: 90%; /* Adjust the distance from the top of the container */
+}
+
+/* Keyframes for the wave animation */
+@keyframes wave {
+  0% {
+    background-position: -200% 0;
+  }
+  50% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .wavelength {
+    height: 3px; /* Thinner wave on smaller screens */
+  }
+}
+
+/* Refined Button Styling */
+button {
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px #00f9ff;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll issues */
+  scroll-behavior: smooth; /* Optional: Adds smooth scrolling across the app */
+}
+
+body {
+  min-height: 100%;
+}
+
+/* Sleek Pulse Wave Animation */
+.elegant-wave {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 4px; /* Thin and elegant */
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.2));
+  background-size: 200% 100%;
+  animation: elegantFlow 5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite; /* Smooth wave animation */
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6); /* Subtle glowing effect */
+  top: 90%; /* Position from the top */
+  z-index: 0;
+}
+
+/* Keyframes for smooth pulse flow */
+@keyframes elegantFlow {
+  0% {
+    background-position: -200% 0;
+  }
+  50% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .elegant-wave {
+    height: 2px; /* Thinner wave on smaller screens */
+  }
+}
+
+/* App.css */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Base Button Styles */
+button {
+  position: relative; /* Needed for pseudo-element positioning */
+  /* overflow: hidden; To hide the stripe outside the button */
+}
+
+/* Shiny Stripe Animation */
+.shiny-stripe {
+  content: '';
+  position: absolute;
+  top: -150%; /* Start outside the button */
+  left: -150%; /* Start from the left */
+  width: 300%; /* Make it wide enough for the diagonal effect */
+  height: 300%; /* Same height for full coverage */
+  background: linear-gradient(
+    120deg, 
+    transparent 50%, 
+    rgba(0, 249, 255, 0.2) 50%, 
+    rgba(0, 249, 255, 0.6) 60%, 
+    transparent 70%
+  ); /* Cyan diagonal gradient */
+  transform: rotate(0deg); /* Initial rotation */
+  animation: shiny-glare 3.5s infinite linear; /* Infinite animation */
+  pointer-events: none; /* Disable interaction with the stripe */
+}
+
+/* Keyframe Animation */
+@keyframes shiny-glare {
+  0% {
+    transform: translateX(-150%) translateY(-150%);
+  }
+  100% {
+    transform: translateX(150%) translateY(150%);
+  }
+}
+
+/* Loading */
+/* Rotating Halo Animation */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Pulsing Dot Animation */
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+/* Loader Outer Halo */
+/* Rotating Outer Ring Animation */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Central Dot Pulse Animation */
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+/* Metallic 3D Loader Outer Ring */
+.loader {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  /* Conic-gradient creates the futuristic ring effect */
+  background: conic-gradient(from 0deg, #00c6ff, #0072ff, #00c6ff);
+  animation: spin-slow 2s linear infinite;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Outer shadow to enhance the 3D feel */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Inner Metallic Circle with Embossed (3D) Look */
+.loader::before {
+  content: "";
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  /* Linear gradient simulates a brushed metal surface */
+  background: linear-gradient(145deg, #cfcfcf, #ffffff);
+  /* Inset shadows create an embossed, 3D effect */
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), 
+              inset -2px -2px 5px rgba(255, 255, 255, 0.7);
+}
+
+/* Optional: Highlight overlay for extra metallic shine */
+.loader::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.4), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Utility class for the pulsing central dot */
+.animate-pulse-slow {
+  animation: pulse-slow 1.5s ease-in-out infinite;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Glass effects */
+
+/* Glassy card effect for high-tech feel */
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  border: 0px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Glass container effect for feature boxes */
+.glass-container {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem;
+}
+
+/* Shadow for glass elements */
+.shadow-glass {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glow-logo {
+  filter: drop-shadow(0px 0px 8px rgba(0, 255, 255, 0.6)); /* Cyan glow */
+}
+
+/* Bar loading animation */
+.postman-loader {
+  display: flex;
+  gap: 8px; /* Space between dots */
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ffffff; /* Postman’s orange */
+  border-radius: 50%; /* Circular dots */
+  animation: pulse 1.4s infinite ease-in-out; /* Smooth, flowing rhythm */
+}
+
+/* Stagger the animation for a wave-like effect */
+.dot:nth-child(1) { animation-delay: 0s; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+.dot:nth-child(4) { animation-delay: 0.6s; }
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.5); /* Slight grow */
+    opacity: 1; /* Brighten */
+  }
+}
