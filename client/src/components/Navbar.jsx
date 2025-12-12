@@ -8,7 +8,7 @@ import { symDecrypt } from "./aesbox";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { backendUrl, isLoggedIn, setIsLoggedIn, symKey, setDemo, publicKey} = useContext(AppContext);  
+  const { backendUrl, isLoggedIn, setIsLoggedIn, setDemo} = useContext(AppContext);  
   
   const logout = useCallback(async () => {
     try {
@@ -49,16 +49,11 @@ const Navbar = () => {
   return (
       <div className="w-full flex justify-between items-center p-4 sm:p-6 sm:px-18 sm:absolute fixed top-0 z-10 select-none glass-card">
       {<img onClick={() => navigate('/')}src={assets.logo} alt="Logo" className="left-5 w-16 sm:w-26 mx-2 items-center cursor-pointer glow-logo" />}
-      {<img src={assets.beta} alt="Logo" className="w-10 mx-2 items-center cursor-pointer " />}
+      {<img src={assets.beta} alt="Logo" className="hidden md:block w-10 mx-2 items-center cursor-pointer " />}
 
-      {/* <div className="ml-auto flex items-center gap-4">
-      <a href="https://github.com/Rushikesh-Yeole" target="_blank" rel="noopener noreferrer">
-      {<img src={assets.github} alt="Logo" className="w-14 mb-2.5  cursor-pointer" />}
+      <a href="https://github.com/Rushikesh-Yeole/Neokey" target="_blank" rel="noopener noreferrer">
+        {<img src={assets.github} alt="Logo" className="w-10 mr-2 mb-0.5 cursor-pointer" />}
       </a>
-      </div> */}
-      {/* <div className="block md:hidden ml-auto px-2">
-      <InstallButton />
-      </div> */}
       
       {isLoggedIn==='T' ?
       <button className="z-10 flex justify-center ml-auto items-center px-4 py-1.5 sm:py-1 mr-4 sm:mr-3 sm:px-5 mb-2 rounded-full border border-slate-300 bg-gray-800 shadow-lg text-cyan-300 group relative cursor-pointer glass-card">  

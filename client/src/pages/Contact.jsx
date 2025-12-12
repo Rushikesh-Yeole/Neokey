@@ -106,8 +106,7 @@ const ContactUs = () => {
               />
             </div>
             
-            {/* Insert EmojiBar here */}
-            {/* <p className="text-sm text-gray-300">How you feelin?</p> */}
+            {/* EmojiBar */}
             <EmojiBar selectedEmoji={selectedEmoji} setSelectedEmoji={setSelectedEmoji} />
 
             {status && <p className="text-center text-sm text-gray-200">{status}</p>}

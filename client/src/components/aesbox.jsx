@@ -2,13 +2,12 @@
 * Client-Side Cryptographic Library
 * 
 * This file contains all client-side hashing and encryption.
-* Key operations:
+* Key ops:
 * - arghash: Argon2id password derivation
 * - bhash: BLAKE3 hashing for identifiers
-* - encrypt: RSA-2048 encryption
+* - encrypt: RSA-2048 encryption with server public key
 * - symDecrypt: AES-256-GCM decryption
-* 
-* SECURITY: Master passwords never leave this file in plaintext.
+* - hhash: HMAC-SHA256
 */
 
 import { argon2id } from '@noble/hashes/argon2';
@@ -28,9 +27,9 @@ export function bhash(data, key) {
 }
 
 // Argon2id
-export const arghash = async (data, salt) => {
-  const salt = sha256(utf8ToBytes(salt));
-  const hashBytes = argon2id(utf8ToBytes(data), salt, {
+export const arghash = async (masterPassword, email) => {
+  const salt = sha256(utf8ToBytes(email));
+  const hashBytes = argon2id(utf8ToBytes(masterPassword), salt, {
     t: 3, m: 16384, p: 1, dkLen: 32
   });
   return btoa(String.fromCharCode(...hashBytes));
@@ -44,8 +43,8 @@ export const hhash = (msgStr, keyBase64) => {
 };
 
 // clientBlob = HMAC("domain:email", masterKey )
-export const makeClientBlob = (data, key) =>
-  hhash(`neokey-index-v1:${data}`, key);
+export const makeClientBlob = (email, masterKeyBytes) =>
+  hhash(`neokey-index-v1:${email}`, masterKeyBytes);
 
 // RSA
 export const encrypt = (plaintextStr, publicKeyPem) => {
@@ -55,7 +54,7 @@ export const encrypt = (plaintextStr, publicKeyPem) => {
   return forge.util.encode64(encrypted);
 };
 
-// --- AES symmetric encryption ---
+// --- AES-GCM ---
 
 async function strToKey(keyStr){
   const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(keyStr));
@@ -79,7 +78,45 @@ export async function symDecrypt(b64,keyStr){
 // --- USE ---
 
 export const buildClientBlob = async (masterPassword, email, publicKeyPem) => {
-  const masterKeyBase64 = await arghash(masterPassword, email); // string
-  const clientBlobBase64 = makeClientBlob(email, masterKeyBase64); // string
-  return encrypt(clientBlobBase64, publicKeyPem); // string
+  const masterKeyBase64 = await arghash(masterPassword, email);
+  const clientBlobBase64 = makeClientBlob(email, masterKeyBase64);
+  return encrypt(clientBlobBase64, publicKeyPem);
+};
+
+export const buildSalt = async (masterPassword, email) => {
+  const masterKeyBase64 = await arghash(masterPassword, email);
+  const clientBlobBase64 = makeClientBlob(email, masterKeyBase64);
+  return clientBlobBase64;
+};
+
+// --- KEYGEN ---
+export const keygen = (skey, csalt) => {
+  let key = ""
+  let [scope, ...keyhash] = skey.split(':');
+  scope = (parseInt(scope, 10)) - 4;
+  keyhash = keyhash.join(':');
+
+  const hash = bhash(keyhash, csalt);
+
+  const ascXor = [...hash].reduce((acc, ch) => acc ^ ch.charCodeAt(0), 0);
+  let num = [...hash].filter((ch) => /\d/.test(ch));
+  let alp = [...hash].filter((ch) => /[a-zA-Z]/.test(ch));
+  num = num.length ? num : [...hash].slice(0, 3).map(c => (c.charCodeAt(0) % 10).toString());
+  alp = alp.length >= 2 ? alp : [...hash].slice(0, 3).map(c => String.fromCharCode(97 + (c.charCodeAt(0) % 26)));
+
+  const allowedChars = "!#%*+,-./:;<=>?^_`{|}~()[]" + "0123456789" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz" ;
+  key = allowedChars[(ascXor) % 26];
+  key += alp.shift().toUpperCase();
+  key += num.shift();
+  key += alp.shift().toLowerCase();
+  
+  let dish = [...hash];
+  let ctr = 0;
+  
+  for (let k = 0; k < scope; k++) {
+    ctr = ((ctr << 5) | (ctr >>> 27)) ^ ((dish[k % dish.length].charCodeAt(0) + k * 2654435761) >>> 0);
+    key += allowedChars[(ctr >>> 0) % allowedChars.length];
+  }
+
+  return key;
 };

@@ -14,6 +14,8 @@ import apps from './apps.png'
 import analytics from './analytics.png'
 import github from './github.png'
 import beta from './beta.png'
+import x from './x.png'
+import lnkd from './lnkd.png'
 
 export const assets = {
     arrow,
@@ -31,5 +33,7 @@ export const assets = {
     apps,
     analytics,
     github,
-    beta
+    beta,
+    x,
+    lnkd
 }

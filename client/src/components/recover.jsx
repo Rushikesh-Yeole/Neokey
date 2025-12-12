@@ -37,7 +37,7 @@ export const RecoveryArtifact = async (password, email) => {
     page.drawText('NEOKEY', { x: 45, y: height - 55, size: 26, font: fontBold, color: rgb(0, 0, 0) });
     page.drawText('Recovery Artifact', { x: 45, y: height - 80, size: 10, font, color: rgb(0.4, 0.4, 0.42) });
 
-    // --- Confidential Card ---
+    // --- Confidential Card
     const warnY = height - 200;
     const warnX = 45, warnW = width - 90, warnH = 95;
     page.drawRectangle({ x: warnX + 2, y: warnY - 4, width: warnW, height: warnH, color: rgb(0.88, 0.88, 0.9) });
@@ -50,7 +50,7 @@ export const RecoveryArtifact = async (password, email) => {
     page.drawText('It enables password recovery if master password forgotten. Store securely.', { x: warnX + 40, y: warnY + warnH - 56, size: 9, font, color: rgb(0.35, 0.35, 0.35) });
     page.drawText('As anyone with this file and your email can get your master password.', { x: warnX + 40, y: warnY + warnH - 70, size: 9, font: fontBold, color: rgb(0.8, 0.4, 0.1) });
 
-    // --- Master Password Card ---
+    // --- Master Password
     const passY = warnY - 155;
     const passX = 45, passW = width - 90, passH = 135;
     page.drawRectangle({ x: passX + 2, y: passY - 4, width: passW, height: passH, color: rgb(0.92, 0.92, 0.94) });
@@ -65,7 +65,7 @@ export const RecoveryArtifact = async (password, email) => {
     page.drawRectangle({ x: passX + 20, y: passY + 12, width: 110, height: 16, color: rgb(0.93, 0.98, 0.94) });
     page.drawText('AES-256 Encrypted', { x: passX + 38, y: passY + 16, size: 8, font: fontBold, color: rgb(0.15, 0.6, 0.25) });
 
-    // --- Recovery Instructions ---
+    // --- Instructions
     const instrY = passY - 170;
     const instrX = 45, instrW = width - 90, instrH = 150;
     page.drawRectangle({ x: instrX + 2, y: instrY - 4, width: instrW, height: instrH, color: rgb(0.92, 0.92, 0.94) });
@@ -87,7 +87,7 @@ export const RecoveryArtifact = async (password, email) => {
       instrLineY -= 26;
     });
 
-    // --- Metadata Card ---
+    // --- Metadata Card
     const metaY = instrY - 135;
     const metaX = 45, metaW = width - 90, metaH = 85;
     page.drawRectangle({ x: metaX + 2, y: metaY - 4, width: metaW, height: metaH, color: rgb(0.92,0.92,0.94) });
@@ -130,11 +130,11 @@ export const RecoveryArtifact = async (password, email) => {
     const blob = new Blob([pdfBytes], { type:'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url; a.download=`neokey-recovery-artifact-${encodeURIComponent(email.replace(/[@.]/g,'-'))}.pdf`;
+    a.href=url; a.download=`neokey-recovery-artifact.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),10000);
 
-    return { success:true, message:<>One-time Recovery Artifact. <br></br><br></br> <strong>Generated and encrypted on-device with your email</strong>.<br></br><br></br> Keep it secure.</> };
+    return { success:true, message:<>One-time Recovery Artifact is Downloaded 📥 <br></br><br></br> <strong>Generated and encrypted on-device with your email</strong>.<br></br><br></br> Keep it secure.</> };
   } catch(error){
     console.error('Recovery Artifact error:', error);
     return { success:false, message:`PDF generation failed: ${error?.message||error}` };

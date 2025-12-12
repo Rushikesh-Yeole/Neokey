@@ -45,7 +45,7 @@ const FAQAndHowTo = () => {
     question: "What happens if I lose my Neokey { Master password } ?",
     answer: (
   <>
-    If you lose your Neokey, recovery is only possible via the <strong>one-time QR code</strong> you downloaded at signup.  
+    If you lose your Neokey, recovery is only possible via the <strong>one-time generated artifact</strong> you downloaded at signup.  
     <br></br>Your previously generated passwords remain reproducible on-demand, ensuring seamless <strong>backward compatibility</strong>.
   </>
   ),
@@ -67,7 +67,7 @@ const FAQAndHowTo = () => {
 
   const howToSteps = [
     "Step 1: Sign up using your email and a strong Master password",
-    "Step 2: Download & keep the one-time QR code — your fallback to recover the master key",
+    "Step 2: Download & keep the one-time Recovery artifact — your fallback to regain the master key",
     "Step 3: Type or select a website/service name",
     "Step 4: Enter your master key",
     "Step 5: Create or Retrieve a password for any service",

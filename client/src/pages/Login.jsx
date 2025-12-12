@@ -57,6 +57,7 @@ const Login = () => {
         if (data.success) {
           document.activeElement.blur();
           setAuthsalt(data.authsalt);
+          setTimeout(()=>setAuthsalt(''), (60 * 1000 * 5));
           setCsalt(data.csalt);
           setIsLoading(false)
           setIsSent(true);
@@ -75,19 +76,21 @@ const Login = () => {
   const verifyOtp = async () => {
     if(isSent){try {
       const otpString = otp.join('');
-      let useAuthsalt = await symDecrypt((authsalt), bhash(stub, otpString))
-      localStorage.setItem("csalt", await symDecrypt(csalt, bhash(stub, otpString)))
-      localStorage.setItem("bsalt", hhash(password, localStorage.getItem("csalt")))
-      let cryptcred = encrypt( bhash(password, localStorage.getItem("csalt")), publicKey) ;
-      setAuthsalt('');
-      setStub('');
-      setCsalt('');
+      let rstub = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
+      let useAuthsalt = await symDecrypt(authsalt, bhash(stub, otpString)).catch(() => rstub );
+      localStorage.setItem("csalt", await symDecrypt(csalt, bhash(stub, otpString)).catch(() => rstub ));
+      localStorage.setItem("bsalt", hhash(password, localStorage.getItem("csalt")));
+      let cryptcred = encrypt( bhash(password, localStorage.getItem("csalt")), publicKey);
       let cotp = bhash(otpString, useAuthsalt);
       const cryptotp = encrypt(cotp, publicKey);
       const cryptaction = encrypt(useAuthsalt.length.toString().padStart(2,'0') + useAuthsalt + action, publicKey);
       
       let { data } = await axios.post(backendUrl + '/auth/verify-account', { cryptcred, cryptotp, cryptaction });
-      if (data.success) {
+
+      if (data && data.success) {
+        setAuthsalt('');
+        setStub('');
+        setCsalt('');
         let token = await symDecrypt(data.token, cotp);
         localStorage.setItem("token", token);
         axios.defaults.headers["Authorization"] = `Bearer ${token}`;
@@ -96,7 +99,7 @@ const Login = () => {
         if (action === "signup") {
           const pdfResult = await RecoveryArtifact(password, email);
           if (pdfResult.success) {
-            toast.success(pdfResult.message,{ autoClose: 5500});
+            toast.success(pdfResult.message,{ autoClose: 9000});
           }
         }
 
@@ -109,10 +112,11 @@ const Login = () => {
         
       } else {
         setOtp(['', '', '', '', '', ''])
-        toast.error(data.message,{ autoClose: 1200});
+        toast.error(data.message || "Verification Failed. Contact us",{ autoClose: 1500});
       }
     } catch (error) {
-      toast.error(error.message,{ autoClose: 1500});
+      setOtp(['', '', '', '', '', '']);
+      toast.error(error.message || "Verification Failed. Contact us",{ autoClose: 1500});
     }
   }
   };

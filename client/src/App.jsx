@@ -8,8 +8,8 @@ import "react-toastify/dist/ReactToastify.css";
 import Home from "./pages/Home";
 // import Runes from "./pages/Runes";
 import Login from "./pages/Login";
-import Reset from "./pages/Reset";
-import Stats from "./pages/Stats";
+// import Reset from "./pages/Reset";
+// import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import Faqs from "./pages/Faqs.jsx";
 import Bifrost from "./pages/Bifrost.jsx";
@@ -25,7 +25,7 @@ const App = () => {
         {/* <Route path="/runes" element={<Runes />} /> */}
         <Route path="/login" element={<Login />} />
         {/* <Route path="/reset" element={<Reset />} /> */}
-        <Route path="/stats" element={<Stats />} />
+        {/* <Route path="/stats" element={<Stats />} /> */}
         <Route path="/settings" element={<Settings />} />
         <Route path="/faqs" element={<Faqs />} />
         <Route path="/contact" element={<ContactUs />} />

@@ -5,7 +5,6 @@ import { AppContext } from '../context/AppContext';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import Navbar from "../components/Navbar";
-// import debounce from 'lodash.debounce';
 import Footer from '../components/Footer';
 import { useCallback } from 'react';
 import { encrypt, symDecrypt } from '../components/aesbox';
@@ -35,7 +34,6 @@ const BifrostPage = () => {
     setStarted(false);  
     setTimeLeft(timeWindow);
     setEnteredCode("");setCode("");
-    // heimdall('close-bifrost');
   })
 
   useEffect(() => {

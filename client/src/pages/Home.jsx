@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { encrypt, bhash, arghash, symDecrypt} from "../components/aesbox";
+import { encrypt, bhash, arghash, symDecrypt, hhash, keygen, symEncrypt} from "../components/aesbox";
 import Footer from "../components/Footer";
 import Pops from "../components/Pops";
 
@@ -58,7 +58,7 @@ const Home = () => {
   return false;
 }
   
-// Merge accountOptions and userServices, prefer accountOptions, and remove case-insensitive duplicates
+// Merge accountOptions, userServices + prefer accountOptions + remove duplicates
 const mergeServices = () => [
   ...accountOptions,
   ...userServices
@@ -66,13 +66,13 @@ const mergeServices = () => [
     .map(service => service.charAt(0).toUpperCase() + service.slice(1).toLowerCase())
 ];
 
-// Spell correction function
+// Spell correction
 const correctSpelling = (input) => {
   let allServices = mergeServices();
   return allServices.find(service => service.toLowerCase().includes(input.toLowerCase()) && input.length > 1) || input;
 };
 
-// Handle input change and filter suggestions
+// input change & filter suggestions
 const handleInputChange = (e) => {
   const input = e.target.value.trim();
   setSelectedService(input);
@@ -102,6 +102,7 @@ const handleInputChange = (e) => {
       let lock = selectedService.trim().toLowerCase();
       if(!password || !lock){return toast.error(`Enter Requirements`,{ autoClose: 700})};
       
+      const stub = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
       if(action==='retrieve'){setLoadR(true);}
       else if(demo){
         toast.info("Can't create new passwords on Demo account. Please Sign in",{ autoClose: 2200}); return;
@@ -109,31 +110,34 @@ const handleInputChange = (e) => {
       else{
         setLoadC(true);
         metadata = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16);
-        const stub = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
-        csalt = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
         metadata = scope + ':' + bhash(metadata, stub);
       };
       
       let cred =  bhash(password, localStorage.getItem("csalt"));
+      lock = bhash(cred, (selectedService.trim().toLowerCase()));
+      if (action!=='retrieve') { lock = selectedService.trim().toLowerCase() };
+
       let bsalt = localStorage.getItem("bsalt");
-      if (action==='retrieve') { csalt = bhash(lock, bhash(password, cred)) };
 
       const payload =
-        lock.length.toString().padStart(2, '0') + lock +
+        lock.length.toString().padStart(3, '0') + lock +
         cred.length.toString().padStart(3, '0') + cred +
-        bsalt.length.toString().padStart(3, '0') + bsalt +
-        csalt;
-      const crypt = encrypt(payload, publicKey);
-            
-      let { data } = await axios.post(`${backendUrl}/user/${action}`, { metadata, crypt });
-      let end = performance.now();
+        bsalt.length.toString().padStart(3, '0') + bsalt;
+      
+      const crypt = await symEncrypt(payload, stub);
+      const cryptstub = encrypt(stub, publicKey);
+
+      let { data } = await axios.post(`${backendUrl}/user/${action}`, { metadata, crypt, cryptstub });
+      // let end = performance.now();
       // let timeTaken = end - start;
-      // console.log(`${action} time : ${timeTaken.toFixed(2)} ms`);
+      // console.log(`${action}: ${timeTaken.toFixed(2)} ms`);
       
       if (data.success) {
-        if(data.key){
+        if(data.keyhash){
           setPassword("");
-          setKey(await symDecrypt(data.key, csalt));
+          csalt = hhash(lock, hhash(password, localStorage.getItem("csalt")))
+          let derivedKey = keygen(await symDecrypt(data.keyhash, stub), csalt)
+          setKey(derivedKey);
           setLoadR(false);
         } else { fetchServices(); setLoadC(false); };
         toast.success(data.message,{ autoClose: 2000});
@@ -165,7 +169,7 @@ const handleInputChange = (e) => {
           {!render && <span
             onClick={() => window.showPopup({
               title: "Using Neokey",
-              body: <>Type/select a service name<br/> → Enter master password<br/> → Create password for a service<br/> → Retrieve password & copy it!<br/>{demo && <><br/> <strong>DEMO</strong> <br/> Demo account Neokey password : <strong>fomo</strong> <br/>Try Retrieving passwords or Bifrost logins! </>}</>,
+              body: <>Type/select a service name<br/> → Enter master password<br/> → Create password for a service<br/> → Retrieve password & copy it!<br/>{demo && <><br/> <strong>DEMO</strong> <br/> Demo account password : <strong>'fomo'</strong> <br/>Try Retrieving passwords or Bifrost logins! <br></br><br></br> (Retrieve for Google, Instagram, X, Netflix...) (Create not allowed for demo) </>}</>,
               primaryLabel: "Got it"
             })}
             className="ml-4 text-cyan-300 hover:underline"
@@ -194,7 +198,7 @@ const handleInputChange = (e) => {
         {!render && <span
           onClick={() => window.showPopup({
             title: "Using Neokey",
-            body: <>Type/select a service name<br/> → Enter master password<br/> → Create password for a service<br/> → Retrieve password & copy it!<br/>{demo && <><br/> <strong>DEMO</strong> <br/> Demo account Neokey password : <strong>fomo</strong> <br/>Try Retrieving passwords or Bifrost logins! </>}</>,
+            body: <>Type/select a service name<br/> → Enter master password<br/> → Create password for a service<br/> → Retrieve password & copy it!<br/>{demo && <><br/> <strong>DEMO</strong> <br/> Demo account password : <strong>'fomo'</strong> <br/>Try Retrieving passwords or Bifrost logins! <br></br><br></br> (Retrieve for Google, Instagram, X, Netflix...) (Create not allowed for demo) </>}</>,
             primaryLabel: "Got it"
           })}
           className="ml-4 text-cyan-300 hover:underline"
@@ -306,7 +310,7 @@ const handleInputChange = (e) => {
           Sure about creating a new password for {selectedService}?
         </h3>
 
-        {/* === Capsular Slider === */}
+        {/* Capsule Slider */}
         <div className="flex justify-between mb-4">
           <div className="relative flex-1 mx-2 bg-slate-400/40 rounded-full p-1 flex items-center justify-between text-sm cursor-pointer select-none">
             {sections.map((len) => (
@@ -460,7 +464,7 @@ const featureBoxes = () => {
     <div className={`min-h-screen sm:px-0 select-none cursor-pointer animate-pulse-smooth ${render ? 'bg-black' : 'bg-gradient-to-b from-gray-900 via-cyan-900 to-cyan-950'}`}>
      <Pops /> 
     {!render && <Navbar />}
-      {/* First Section */}
+      {/* Section 1 */}
     <div className="h-screen flex flex-col lg:flex-row items-center justify-center pt-6 sm:pt-16 px-6 sm:px-0 animate-pulse-smooth">
       {Banner()}
       {render ?  
@@ -476,7 +480,7 @@ const featureBoxes = () => {
       </div>
       {showModal && confirmModal()}
 
-      {/* Third Section */}
+      {/* Section 3 */}
       {!render ? featureBoxes() : null}
       <div className="w-full text-slate-400 ">
       {!render &&<Footer />}
