@@ -5,13 +5,12 @@ import { AppContext } from '../context/AppContext';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import Navbar from "../components/Navbar";
-// import debounce from 'lodash.debounce';
 import Footer from '../components/Footer';
 import { useCallback } from 'react';
 import { encrypt, symDecrypt } from '../components/aesbox';
+import CredStore from "../components/CredStore";
 
 const timeWindow = 62;
-
 
 const BifrostPage = () => {
   const { publicKey, backendUrl, isLoggedIn, setIsLoggedIn, symKey } = useContext(AppContext);
@@ -35,11 +34,10 @@ const BifrostPage = () => {
     setStarted(false);  
     setTimeLeft(timeWindow);
     setEnteredCode("");setCode("");
-    // heimdall('close-bifrost');
   })
 
   useEffect(() => {
-    if (isLoggedIn==='F' && receiverOpened && enteredCode.trim().length === 4){
+    if (isLoggedIn==='F' && receiverOpened && enteredCode.trim().length === 6){
       document.activeElement.blur();
       setCode(enteredCode);
       heimdall('close-bifrost')};
@@ -49,11 +47,22 @@ const BifrostPage = () => {
     try {
       let start = performance.now();
       let [csalt, bsalt] = ["", ""];
-      if (action == 'bifrost') {csalt = localStorage.getItem("csalt"); bsalt = localStorage.getItem("bsalt");}
+      
+      if (action == 'bifrost') {
+        csalt = CredStore.getCsalt();
+        bsalt = CredStore.getBsalt();
+        if (!csalt || !bsalt) {
+           toast.error("Veriy yourself.", {autoClose: 1000});
+           navigate('/');
+           return;
+        }
+      }
       const stub = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
       const cryptblob = encrypt((csalt.length.toString().padStart(3,'0') + csalt + bsalt.length.toString().padStart(3,'0') + bsalt + stub), publicKey);
+      
       let { data } = await axios.post(`${backendUrl}/auth/${action}`,{code: enteredCode || code, cryptblob});
       console.log('heimdall');
+      
       if(data.success){
         if(action == 'bifrost'){
           toast.success(data.message,{ autoClose: 1000});
@@ -72,7 +81,8 @@ const BifrostPage = () => {
 
           localStorage.setItem("token", token);
           localStorage.setItem("csalt", csalt);
-          localStorage.setItem("bsalt", bsalt);
+          // CredStore.setCsalt(csalt);
+          CredStore.setBsalt(bsalt);
           axios.defaults.headers["Authorization"] = `Bearer ${token}`;
 
           setTimeout(() => {setIsLoggedIn('T'); navigate('/');}, 3000);
@@ -179,13 +189,13 @@ const BifrostPage = () => {
                 className="w-36 px-2 py-1 text-2xl font-bold text-center font-mono bg-transparent text-white drop-shadow-xl border-b border-cyan-400 outline-none"
                 value={enteredCode} 
                 onChange={e => setEnteredCode(e.target.value)} 
-                maxLength="4" 
-                placeholder="----" 
+                maxLength="6" 
+                placeholder="------" 
                 />
               </div>
               {blinkClass && <div className={`absolute inset-0 rounded-full ${blinkClass}`}></div>}
             </div>
-            {enteredCode.trim().length===4 && <div className="text-center text-cyan-100 font-mono text-lg drop-shadow-sm">Searching secure channel...</div>}
+            {enteredCode.trim().length===6 && <div className="text-center text-cyan-100 font-mono text-lg drop-shadow-sm">Searching secure channel...</div>}
           </div>
         )}
         <div className="w-full mt-auto text-slate-400">

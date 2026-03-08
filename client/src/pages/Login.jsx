@@ -5,13 +5,15 @@ import { AppContext } from "../context/AppContext";
 import axios from 'axios';
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar";
-import { encrypt, symDecrypt, buildClientBlob, bhash, hhash } from "../components/aesbox";
+import { encrypt, symDecrypt, buildClientBlob, bhash, hhash, arghash, symEncrypt } from "../components/aesbox";
 import Footer from "../components/Footer";
 import { RecoveryArtifact } from "../components/recover";
+import DicewarePhraseCard from "../components/diceware";
+import CredStore from "../components/CredStore";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { backendUrl, isLoggedIn, setIsLoggedIn, publicKey, authAccess} = useContext(AppContext);
+  const { backendUrl, isLoggedIn, setIsLoggedIn, publicKey, authAccess, phrase, setPhrase, signup, setSignup, recoveryPdf, setRecoveryPdf} = useContext(AppContext);
   const inputRefs = React.useRef([]);
   const otpCallRef = React.useRef(false);
 
@@ -20,35 +22,39 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
-  const [action, setAction] = useState("signup");
+  const [action, setAction] = useState(signup? "signup" : "login");
   const [authsalt, setAuthsalt] = useState('');
   const [csalt, setCsalt] = useState('');
   const [stub, setStub] = useState('');
+  const [dice, setDice] = useState(false);
 
   useEffect(() => {
-    if (isLoggedIn=='T') { navigate('/');}
-  }, [isLoggedIn]);
+    if (isLoggedIn === 'T') { navigate('/');}
+  }, [isLoggedIn, signup]);
   
 
-  useEffect(() => {
-    if (isSent && otp.every((digit) => digit !== '')) {
-      if (otpCallRef.current) return;
-      otpCallRef.current = true;
-      verifyOtp();
-      setTimeout(() => { otpCallRef.current = false; }, 500);
-    }
-  }, [otp, isSent]);
+  // useEffect(() => {
+  //   if (isSent && password && otp.every((digit) => digit !== '')) {
+  //     if (otpCallRef.current) return;
+  //     otpCallRef.current = true;
+  //     verifyOtp();
+  //     setTimeout(() => { otpCallRef.current = false; }, 500);
+  //   }
+  // }, [otp, isSent]);
   
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    setIsSent(false);
     try {
         if (!email || !password) {
           toast.error("Please provide both email and password.");
           return;
         }
         setIsLoading(true);
+        await new Promise(r => setTimeout(r, 1200));
         let cryptemail = encrypt(email, publicKey);
-        let cryptcred = await buildClientBlob(password, email, publicKey);
+        let cryptcred = await buildClientBlob(email, email, publicKey, {t:2, m:32768}); 
+
         let stub = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
         setStub(stub)
         stub = encrypt(stub, publicKey);
@@ -57,66 +63,88 @@ const Login = () => {
         if (data.success) {
           document.activeElement.blur();
           setAuthsalt(data.authsalt);
+          setTimeout(()=>setAuthsalt(''), (60 * 1000 * 5));
           setCsalt(data.csalt);
           setIsLoading(false)
           setIsSent(true);
+          setPassword('')
           setTimeout(()=>setIsSent(false), (60 * 1000 * 5));
-          toast.success(data.message,{ autoClose: 1200});
+          toast.success(data.message,{ autoClose: 1500});
+          toast.info(<>Re-enter your password <br/>& the OTP mailed to you</>, {autoClose: 2000});
         } else {
           toast.error(data.message,{ autoClose: 1500});
           setIsLoading(false)
         }
       } catch (error) {
-      setIsLoading(false);
       toast.error(error.message,{ autoClose: 1500});
     } finally {setIsLoading(false);}
   };
 
   const verifyOtp = async () => {
-    if(isSent){try {
+    if(isSent){
+      setIsLoading(true);
+      if (!email || !password || !otp) {
+          toast.error("Incomplete request.");
+          setOtp(['', '', '', '', '', ''])
+          return;
+      }
+      
+      try {
       const otpString = otp.join('');
-      let useAuthsalt = await symDecrypt((authsalt), bhash(stub, otpString))
-      localStorage.setItem("csalt", await symDecrypt(csalt, bhash(stub, otpString)))
-      localStorage.setItem("bsalt", hhash(password, localStorage.getItem("csalt")))
-      let cryptcred = encrypt( bhash(password, localStorage.getItem("csalt")), publicKey) ;
-      setAuthsalt('');
-      setStub('');
-      setCsalt('');
+      let rstub = crypto.getRandomValues(new Uint8Array(32)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
+      let useAuthsalt = await symDecrypt(authsalt, bhash(stub, otpString)).catch(() => rstub );
+      let csaltv = await symDecrypt(csalt, bhash(stub, otpString)).catch(() => rstub );
+      // Generate keys
+      let bsaltv = hhash(password, csaltv);
+      let cred = await arghash(password, csaltv);
+      CredStore.setCsalt(csaltv);
+      CredStore.setBsalt(bsaltv);
+      CredStore.setCred(cred);
+
+      // payload
+      let cryptcred = encrypt(cred, publicKey);
       let cotp = bhash(otpString, useAuthsalt);
       const cryptotp = encrypt(cotp, publicKey);
       const cryptaction = encrypt(useAuthsalt.length.toString().padStart(2,'0') + useAuthsalt + action, publicKey);
       
       let { data } = await axios.post(backendUrl + '/auth/verify-account', { cryptcred, cryptotp, cryptaction });
-      if (data.success) {
+
+      if (data && data.success) {
+        setAuthsalt('');
+        setStub('');
+        setCsalt('');
+
+        localStorage.setItem("csalt", await symEncrypt(csaltv, data.saltKey));
         let token = await symDecrypt(data.token, cotp);
         localStorage.setItem("token", token);
         axios.defaults.headers["Authorization"] = `Bearer ${token}`;
-        setIsLoggedIn('T');
-
-        if (action === "signup") {
-          const pdfResult = await RecoveryArtifact(password, email);
-          if (pdfResult.success) {
-            toast.success(pdfResult.message,{ autoClose: 5500});
-          }
+        
+        if (action === "signup" && data.newAcc) {
+          setSignup(false);
+          setRecoveryPdf(true);
         }
 
-        toast.success(data.message, {autoClose: 500,
-          onClose: async () => {
-          setPassword("");
-          setOtp(['', '', '', '', '', ''])
-          navigate('/');
-        }});
+        toast.success(data.message, {autoClose: 500,});
+          if (!data.newAcc) {
+            setPassword("");
+            setOtp(['', '', '', '', '', ''])
+            setIsLoggedIn('T');
+          }
         
       } else {
-        setOtp(['', '', '', '', '', ''])
-        toast.error(data.message,{ autoClose: 1200});
+        setOtp(['', '', '', '', '', '']);
+        CredStore.wipe();
+        toast.error(data.message || "Verification Failed. Contact us",{ autoClose: 1500});
       }
     } catch (error) {
-      toast.error(error.message,{ autoClose: 1500});
-    }
+      setOtp(['', '', '', '', '', '']);
+      CredStore.wipe();
+      toast.error(error.message || "Verification Failed. Contact us",{ autoClose: 1500});
+    } finally {setIsLoading(false);}
   }
   };
 
+  // handling otp
   const handleInput = (e, index) => {
     const value = e.target.value;
 
@@ -125,7 +153,7 @@ const Login = () => {
       newOtp[index] = value;
       setOtp(newOtp);
 
-    if (index === 5 && value) {
+    if (index === 5 && value && password) {
       e.target.blur();
       window.scrollTo(0, 0);}
       
@@ -152,14 +180,67 @@ const Login = () => {
     setOtp(newOtp);
   };
 
+
   return (
     <div className='flex flex-col items-center justify-center min-h-screen pt-16 sm:pt-24 sm:pb-0 px-6 sm:px-6 bg-gradient-to-br from-gray-900 to-cyan-900 select-none animate-pulse-smooth'>
     <Navbar />
 
-    {!authAccess && !isSent ? (
-      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    {dice && 
+      (<DicewarePhraseCard
+        onSubmit={async (words) => {
+          const phrase = await arghash(words.join(" "), words[0]);
+          setPhrase(phrase);
+          setIsLoggedIn('T');
+        }}
+      />)
+    }
+
+    {recoveryPdf &&  (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-md transition-all duration-500"></div>
+        
+        <div className="relative glass-card p-8 rounded-3xl shadow-2xl w-full max-w-sm mx-6 border border-white/10 animate-pulse-smooth">
+          <div className="flex flex-col items-center">
+            <div className="p-3 bg-cyan-500/10 rounded-full mb-4">
+              <img src={assets.lock_icon} className="w-8 h-8 opacity-80" alt="" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-2">Account Created</h2>
+            <p className="text-white text-xs sm:text-base font-semibold mb-6 text-center">
+              Save your one-time Recovery Artifact (PDF)<br/>
+              Encrypted on-device, with your email.<br/>
+              <span className="text-cyan-400 font-mono">Your <b>email</b> is the password</span><br/>
+              Keep it secure.
+
+            </p>
+
+            <button 
+              type="button"
+              onClick={async () => {
+                const pdfResult = await RecoveryArtifact(password, email);
+                if (pdfResult.success) (toast.success("Downloading Recovery PDF..."));
+
+                setTimeout(() => {
+                    setEmail("")
+                    setPassword("");
+                    setOtp(['', '', '', '', '', '']);
+                    setIsLoggedIn('T');
+                    navigate('/'); 
+                }, 500);
+              }}
+              className="w-full bg-slate-100 hover:bg-white text-slate-950 font-medium py-3 rounded-full transition-all duration-300 shadow-sm active:scale-[0.98]"
+            >
+              Download & Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {!authAccess && !isSent && !dice ? (
+      <div className="fixed inset-0 glass-card flex items-center justify-center z-50">
         <div className=" text-white p-6 rounded-lg shadow-xl max-w-xs sm:max-w-sm w-full text-center glass-card">
-          <h3 className="text-xl font-semibold mb-3">High Traffic 🚀</h3>
+          <h3 className="text-2xl font-bold mb-3">High Traffic 🚀</h3>
           <p className="text-gray-300 mb-6">
             Logins and signups are temporarily unavailable due to high user onboarding. <br/> You can access the system again in 24 hours.
           </p>
@@ -177,11 +258,11 @@ const Login = () => {
           </button>
         </div>
       </div>
-    ) : (
+    ) : !dice && (
     
     <div className="glass-card shadow-glass mt-40 sm:mt-24 p-6 sm:p-10 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md text-white text-sm">
       <h2 className="text-3xl font-bold text-center mb-3">{action==="signup" ? "Sign Up" : "Login"}</h2>
-      <form onSubmit={e => (e.preventDefault(), setOtp(['', '', '', '', '', '']), onSubmitHandler(e))} className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); isSent ? verifyOtp() : (setOtp(['', '', '', '', '', '']), onSubmitHandler(e)); }} className="space-y-4">
       <div className="flex items-center gap-3 w-full px-4 py-2.5 rounded-full text-white bg-slate-900">
         <img src={assets.mail_icon} alt="" />
         <input
@@ -205,7 +286,7 @@ const Login = () => {
           value={password}
           className="bg-transparent outline-none w-full"
           type="new-password"
-          style={{ WebkitTextSecurity: "disc" }}
+          style={{}}
           placeholder="Set Neokey Master password"
           autoCapitalize="off"
           autoComplete="off"
@@ -240,9 +321,26 @@ const Login = () => {
     <p onClick={() => {setAction(a => a === "signup" ? "login" : "signup"); setIsSent(false);}}>{action==="signup" ? "Login" : "Sign Up"}</p>
     </div>
 
-    { <button type="submit" className={`font-size: 16px w-full py-2.5 rounded-full border border-[#00f9ff] shadow-sm text-white font-medium ${isLoading? "loading-bar":"" } `}>{isSent? "Re-send OTP":"Send OTP" }</button>}
-      </form>
-      </div>
+<button 
+  disabled={isLoading || (isSent && otp.includes(''))} 
+  type="submit" 
+  className={`text-base w-full py-2.5 rounded-full border border-[#00f9ff] shadow-sm text-white font-medium transition-all disabled:opacity-50 ${isLoading ? "loading-bar" : ""}`}
+>
+  {isLoading ? "Processing..." : (isSent ? "Verify OTP" : "Send OTP")}
+</button>
+
+{isSent && (
+  <p 
+    disabled={isLoading} 
+    type="button" 
+    onClick={(e) => { e.preventDefault(); setOtp(['', '', '', '', '', '']); onSubmitHandler(e); }}
+    className="w-full text-sm text-cyan-400 hover:text-cyan-200 transition-colors bg-transparent text-center cursor-pointer"
+  >
+    Didn't receive code? Re-send
+  </p>
+)}
+    </form>
+    </div>
   )}
       <div className="w-full mt-auto text-gray-200">
       <Footer />

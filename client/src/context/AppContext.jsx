@@ -1,14 +1,14 @@
 import { createContext, useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { encrypt } from "../components/aesbox";
+import { encrypt, symDecrypt } from "../components/aesbox";
+import CredStore from "../components/CredStore";
 
 export const AppContext = createContext();
 
 function AppContextProvider ({children}) {
 
-  const backendUrl = import.meta.env.VITE_BACKEND;//Prod
-  // const backendUrl = import.meta.env.VITE_LOCAL_BACKEND;//Develop
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const [isLoggedIn, setIsLoggedIn] = useState("N");
   const [authAccess, setAuthAccess] = useState(true);
@@ -17,39 +17,57 @@ function AppContextProvider ({children}) {
   const [userServices, setUserServices] = useState([]);
   const [alias, setAlias] = useState("...");
   const [demo, setDemo] = useState(false);
+  const [phrase, setPhrase] = useState("");
+  const [signup, setSignup] = useState(false);
+  const [recoveryPdf, setRecoveryPdf] = useState(false);
+  const [prod, setProd] = useState(backendUrl!==import.meta.env.VITE_LOCAL_BACKEND_URL);
 
   useEffect(() => {
     axios.defaults.withCredentials = true;
-    const timer = setTimeout(getAuthState, 2000);
+    const timer = setTimeout(getAuthState, (isLoggedIn=="N"? 500 : 1200 ));
     return () => clearTimeout(timer);
     }, [isLoggedIn]);
 
+  const logout = () => {
+    localStorage.clear();
+    CredStore.wipe();
+    setIsLoggedIn('F');
+    setUserServices([]);
+    setAlias("...");
+  };
 
   const getAuthState = async () => {
     try {
-      let token = localStorage.getItem("token");
-      if (token) {
+      let token = localStorage.getItem("token") || "";
         axios.defaults.headers["Authorization"] = `Bearer ${token}`;
         let { data } = await axios.get(backendUrl + '/auth/is-auth');
-        console.log(data.message);
         if (data.success) {
           setDemo(data.demo);
+          // SOFT-LOCK
+          const storedCsalt = await symDecrypt(localStorage.getItem("csalt"), data.saltKey);
+          if (storedCsalt) { CredStore.setCsalt(storedCsalt); }
           setIsLoggedIn('T');
-        }else(setIsLoggedIn('F'));
-      }else{setIsLoggedIn('F');
+        } else {
+          setIsLoggedIn('F');
+          localStorage.clear();
+        }
+      } catch (error) {
+        toast.error(error.message);
       }
-      }catch (error) {
-      toast.error(error.message);
-    }
   };
 
   const fetchServices = async () => {
   try {
-    let cryptbsalt = encrypt(localStorage.getItem('bsalt'), publicKey);
+    const bsalt = CredStore.getBsalt();
+    if (!bsalt && !demo) return; 
+
+    let bsaltToEncrypt = demo ? localStorage.getItem('bsalt') : bsalt;
+    let cryptbsalt = encrypt(bsaltToEncrypt, publicKey);
     const { data } = await axios.post(`${backendUrl}/user/services`, {cryptbsalt});
     setUserServices(data.services || []);
     setAlias(data.alias || "Phoenix");
-  } catch {
+  } catch (error) {
+    console.error(error);
     setUserServices([]);
   }
 };
@@ -98,7 +116,15 @@ function AppContextProvider ({children}) {
     fetchServices,
     alias,
     demo,
-    setDemo
+    setDemo,
+    phrase,
+    setPhrase,
+    signup,
+    setSignup,
+    prod,
+    logout,
+    recoveryPdf,
+    setRecoveryPdf
   };
 
   return <AppContext.Provider value={value}> {children} </AppContext.Provider>

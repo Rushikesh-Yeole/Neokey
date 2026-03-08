@@ -12,7 +12,6 @@ export default function Pops() {
   });
 
   useEffect(() => {
-    // Global function to open any styled popup
     window.showPopup = ({
       title,
       body,
@@ -46,7 +45,7 @@ export default function Pops() {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-xl sm:text-3xl font-bold mt-4 mb-4 text-center">{popup.title}</h3>
-        <div className="text-sm sm:text-base text-gray-100 mb-6 text-center">{popup.body}</div>
+        <div className="text-sm sm:text-base text-cyan-50 sm:text-gray-100 mb-6 text-center">{popup.body}</div>
 
         <div className="flex justify-between gap-2 mb-3">
           {popup.secondaryLabel && (

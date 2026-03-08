@@ -2,50 +2,54 @@
 * Client-Side Cryptographic Library
 * 
 * This file contains all client-side hashing and encryption.
-* Key operations:
+* Key ops:
 * - arghash: Argon2id password derivation
 * - bhash: BLAKE3 hashing for identifiers
-* - encrypt: RSA-2048 encryption
+* - encrypt: RSA-2048 encryption with server public key
 * - symDecrypt: AES-256-GCM decryption
-* 
-* SECURITY: Master passwords never leave this file in plaintext.
+* - hhash: HMAC-SHA256
 */
 
 import { argon2id } from '@noble/hashes/argon2';
 import { hmac } from '@noble/hashes/hmac';
 import { sha256 } from '@noble/hashes/sha2';
-import { utf8ToBytes } from '@noble/hashes/utils';
+import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 import forge from 'node-forge';
 import { blake3 } from '@noble/hashes/blake3';
 
+// helpers
+const bytesToBase64 = (bytes) =>
+  btoa(String.fromCharCode(...bytes));
+
+
 export function bhash(data, key) {
-  const encoder = new TextEncoder();
-  const dataBytes = typeof data === 'string' ? encoder.encode(data) : data;
-  const keyBytes = typeof key === 'string' ? encoder.encode(key) : key;
+  const dataBytes = typeof data === 'string' ? utf8ToBytes(data) : data;
+  const keyBytes = typeof key === 'string' ? utf8ToBytes(key) : key;
   const derivedKey = sha256(keyBytes);
-  const hashArray = blake3(dataBytes, { key: derivedKey });
-  return Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
+  return bytesToHex(blake3(dataBytes, { key: derivedKey }));
 }
 
-// Argon2id
-export const arghash = async (data, salt) => {
-  const salt = sha256(utf8ToBytes(salt));
-  const hashBytes = argon2id(utf8ToBytes(data), salt, {
-    t: 3, m: 16384, p: 1, dkLen: 32
+export const arghash = async (masterPassword, email, config = {}) => {
+  const salt = sha256(utf8ToBytes(email));
+  const hashBytes = argon2id(utf8ToBytes(masterPassword), salt, {
+    t: config.t || 1,
+    m: config.m || 19456, 
+    p: config.p || 1, 
+    dkLen: config.dkLen || 32
   });
-  return btoa(String.fromCharCode(...hashBytes));
+  return bytesToBase64(hashBytes); 
 };
 
 // HMAC-SHA256
-export const hhash = (msgStr, keyBase64) => {
-  const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+export const hhash = (msgStr, keyAnyString) => {
+  const keyBytes = utf8ToBytes(keyAnyString);
   const result = hmac(sha256, keyBytes, utf8ToBytes(msgStr));
-  return btoa(String.fromCharCode(...result));
+  return bytesToHex(result);
 };
 
-// clientBlob = HMAC("domain:email", masterKey )
-export const makeClientBlob = (data, key) =>
-  hhash(`neokey-index-v1:${data}`, key);
+// clientBlob = HMAC(email, masterKey )
+export const makeClientBlob = (email, masterKeyBytes) =>
+  hhash(email, masterKeyBytes);
 
 // RSA
 export const encrypt = (plaintextStr, publicKeyPem) => {
@@ -55,7 +59,7 @@ export const encrypt = (plaintextStr, publicKeyPem) => {
   return forge.util.encode64(encrypted);
 };
 
-// --- AES symmetric encryption ---
+// --- AES-GCM ---
 
 async function strToKey(keyStr){
   const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(keyStr));
@@ -78,8 +82,57 @@ export async function symDecrypt(b64,keyStr){
 
 // --- USE ---
 
-export const buildClientBlob = async (masterPassword, email, publicKeyPem) => {
-  const masterKeyBase64 = await arghash(masterPassword, email); // string
-  const clientBlobBase64 = makeClientBlob(email, masterKeyBase64); // string
-  return encrypt(clientBlobBase64, publicKeyPem); // string
+export const buildClientBlob = async (masterPassword, email, publicKeyPem, config={}) => {
+  const masterKeyBase64 = await arghash(masterPassword, email, config);
+  const clientBlobBase64 = makeClientBlob(email, masterKeyBase64);
+  return encrypt(clientBlobBase64, publicKeyPem);
+};
+
+// --- KEYGEN ---
+export const keygen = (skey, csalt) => {
+  let [version, scope, ...keyhash] = skey.split(':');
+  scope = parseInt(scope, 10) || 16;
+  keyhash = keyhash.join(':');
+  let key = [];
+
+  if (version==='v1') {
+  const contextKey = sha256(utf8ToBytes(csalt));
+  // Generate Entropy Stream (The Magic)
+  // request enough bytes to pick characters AND shuffle them.
+  // BLAKE3 is an XOF, so this is native and incredibly fast.
+  const entropy = blake3(utf8ToBytes(keyhash), { 
+    key: contextKey, 
+    dkLen: scope * 4 
+  });
+
+  const sets = {
+    u: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    l: "abcdefghijklmnopqrstuvwxyz",
+    n: "0123456789",
+    s: "!@#$%^*-_+="
+  };
+  const all = sets.u + sets.l + sets.n + sets.s;
+
+  let cursor = 0;
+  key.push(sets.u[entropy[cursor++] % sets.u.length]);
+  key.push(sets.l[entropy[cursor++] % sets.l.length]);
+  key.push(sets.n[entropy[cursor++] % sets.n.length]);
+  key.push(sets.s[entropy[cursor++] % sets.s.length]);
+
+  const limit = 256 - (256 % all.length);
+  while (key.length < scope) {
+    const byte = entropy[cursor++];
+    if (byte < limit || entropy.length - cursor <= scope) {
+      key.push(all[byte % all.length]);
+    }
+  }
+
+  // Fisher-yates shuffle
+  for (let i = scope - 1; i > 0; i--) {
+    const j = entropy[cursor++] % (i + 1);
+    [key[i], key[j]] = [key[j], key[i]];
+  }
+  }
+
+  return key.join('');
 };

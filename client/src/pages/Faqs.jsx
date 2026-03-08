@@ -7,27 +7,38 @@ const FAQAndHowTo = () => {
 
   const faqs = [
   {
-    question: "What's Neokey? and why is it cooler than anything else out there?",
+    question: "Why is Neokey better than the rest?",
     answer: (
       <>
-        Neokey is your ultimate virtual vault—stateless, ultra-secure, and straight-up genius. 
-        <br></br>It's a Password Generator and Manager that <strong> doesn't store passwords, even encrypted!</strong>
-        <br></br>It forges unique, high-entropy passwords <strong>on demand</strong>. 
+        Traditional managers are just digitized notebooks. If they get hacked, you lose everything.
+        <br></br>
+        <br></br>Neokey is your ultimate password platform: Stateless, Ultra-secure, and Anonymous. 
+        <br></br>It's a password platform that <strong> doesn't store passwords, even encrypte.</strong>
+        <br></br>If computes your passwords <strong>in real-time</strong> using high-entropy math. 
         {/* <br></br>They're <strong>never stored</strong>, never vulnerable, and always ready for action.  */}
         <br></br>
-        <br></br>Rest assured, <strong>no one knows your passwords, Literally!</strong>
-        <br></br>You're welcome.
+        <br></br>Zero storage means zero leaks. It's mathematically impossible to steal what isn't there.
       </>
     ),
   },    
+  // <br></br>Rest assured, <strong>no one knows your passwords, Literally!</strong>
+  // <br></br>You're welcome.
+  // It leverages precise algorithmic flows to generate your passwords on-demand.
+
   {
-    question: "How does Neokey ensure security?",
+    question: "Is it actually Secure?",
     answer: (
       <>
-        Neokey <strong>stores Nothing and generates everything on the fly</strong>, giving you truly zero-knowledge security.
+        Neokey <strong>stores no secrets and generates everything on the fly</strong>, giving you truly zero-knowledge security.
         <br></br>
         <br></br>
-        It leverages precise algorithmic flows to generate your passwords on-demand, secures data in transit with strong encryption, and enforces MFA for safe, brute-force-resistant access.
+        It uses end-to-end encryption for transit and irreversible heavy hashing for verification.
+        <br></br>
+        The database is completely opaque & anoymous.
+        <br></br>
+        Neokey enforces MFA for safe, brute-force-resistant access.
+        <br></br>
+        It stores No Identity, No Passwords.
       </>
     ),
   },
@@ -42,23 +53,27 @@ const FAQAndHowTo = () => {
     ),
   },
   {
-    question: "What happens if I lose my Neokey { Master password } ?",
+    question: "What happens if I lose my Master password ?",
     answer: (
-  <>
-    If you lose your Neokey, recovery is only possible via the <strong>one-time QR code</strong> you downloaded at signup.  
-    <br></br>Your previously generated passwords remain reproducible on-demand, ensuring seamless <strong>backward compatibility</strong>.
-  </>
+      <>
+        Then you lose access. Period.  
+        <br></br>
+        We don't know your key, so we can't reset it.
+        <br></br>
+        <br></br>
+        Use the <strong>Recovery Artifact</strong> you downloaded at signup. If you lost that too, we can't help you.
+      </>
   ),
   },
   {
     question: "What's BIFROST?",
     answer: (
       <>
-        BIFROST lets you log in on any device using a 4-digit code, initiating a time-limited 
-        session <strong>lasting 15 minutes</strong>.
-        <br></br>It’s a fast, reliable solution for seamless <strong>no-strings attached multi-device access</strong>.
+        It's a tunnel.
         <br></br>
-        <br></br>Nevertheless, you can login on as many devices you wish.
+        Log in on any device with a temporary 4-digit code. The session stays alive for <strong>15 minutes</strong>. Enough time to get in, get out, and leave no trace.
+        <br></br>
+        You can login on as many devices you wish.
       </>
     ),
   },    
@@ -67,11 +82,11 @@ const FAQAndHowTo = () => {
 
   const howToSteps = [
     "Step 1: Sign up using your email and a strong Master password",
-    "Step 2: Download & keep the one-time QR code — your fallback to recover the master key",
+    "Step 2: Download & keep the one-time Recovery artifact — your fallback to regain the master key",
     "Step 3: Type or select a website/service name",
     "Step 4: Enter your master key",
-    "Step 5: Create or Retrieve a password for any service",
-    "Step 6: Copy the retrieved password securely from the app",
+    "Step 5: Create or Reveal a password for any service",
+    "Step 6: Copy the Revealed password securely from the app",
   ];
 
   const toggleQuestion = (index) => {

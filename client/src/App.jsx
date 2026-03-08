@@ -2,13 +2,10 @@ import { Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import Reframe from './components/addon.jsx';
 import "react-toastify/dist/ReactToastify.css";
-// import { lazy } from "react";
 
-// const Home = lazy(() => import("./pages/Home"));
+// Static Imports for instant transitions
 import Home from "./pages/Home";
-// import Runes from "./pages/Runes";
 import Login from "./pages/Login";
-import Reset from "./pages/Reset";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import Faqs from "./pages/Faqs.jsx";
@@ -22,9 +19,7 @@ const App = () => {
       <Reframe />
       <Routes>
         <Route path="/" element={<Home />} />
-        {/* <Route path="/runes" element={<Runes />} /> */}
         <Route path="/login" element={<Login />} />
-        {/* <Route path="/reset" element={<Reset />} /> */}
         <Route path="/stats" element={<Stats />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/faqs" element={<Faqs />} />

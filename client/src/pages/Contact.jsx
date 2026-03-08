@@ -18,7 +18,7 @@ const EmojiBar = ({ selectedEmoji, setSelectedEmoji }) => {
           className={`text-2xl transition-transform transform hover:scale-150 ${
             selectedEmoji === emoji ? "scale-150" : ""
           }`}
-        >
+        > 
           {emoji}
         </button>
       ))}
@@ -28,7 +28,7 @@ const EmojiBar = ({ selectedEmoji, setSelectedEmoji }) => {
 
 const ContactUs = () => {
   const { backendUrl } = useContext(AppContext);
-  const [form, setForm] = useState({ message: "", email: "" });
+  const [form, setForm] = useState({ message: "", name:"", email: "" });
   const [selectedEmoji, setSelectedEmoji] = useState("");
   const [status, setStatus] = useState("");
 
@@ -42,6 +42,7 @@ const ContactUs = () => {
     try {
       const { data } = await axios.post(backendUrl + "/admin/contact", {
         message: form.message,
+        name: form.name,
         email: form.email,
         emoji: selectedEmoji,
       });
@@ -59,7 +60,7 @@ const ContactUs = () => {
   };
 
   const handleReset = () => {
-    setForm({ message: "", email: "" });
+    setForm({ message: "", name:"", email: "" });
     setSelectedEmoji("");
     setStatus("");
   };
@@ -67,7 +68,7 @@ const ContactUs = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-cyan-900 font-sans select-none">
       <Navbar />
-      <header className="text-center py-6 pt-[140px]">
+      <header className="text-center py-6 pt-32">
         <h1 className="text-2xl sm:text-4xl font-extrabold text-white">
           Write to us
         </h1>
@@ -92,9 +93,26 @@ const ContactUs = () => {
                 placeholder="Your message /appreciation /issue..."
               />
             </div>
+
             <div>
               <label htmlFor="email" className="block text-base font-medium text-cyan-200 mb-1">
-                Send us your mail if you want to connect
+                Name *
+              </label>
+              <input
+                type="name"
+                id="name"
+                value={form.name}
+                required
+                onChange={handleChange}
+                className="w-full border border-gray-300 p-2 sm:p-3 rounded focus:outline-none focus:border-cyan-500 bg-transparent text-white text-sm"
+                placeholder="Your name"
+              />
+            </div>
+
+
+            <div>
+              <label htmlFor="email" className="block text-base font-medium text-cyan-200 mb-1">
+                Your mail for us to respond
               </label>
               <input
                 type="email"
@@ -106,8 +124,6 @@ const ContactUs = () => {
               />
             </div>
             
-            {/* Insert EmojiBar here */}
-            {/* <p className="text-sm text-gray-300">How you feelin?</p> */}
             <EmojiBar selectedEmoji={selectedEmoji} setSelectedEmoji={setSelectedEmoji} />
 
             {status && <p className="text-center text-sm text-gray-200">{status}</p>}
