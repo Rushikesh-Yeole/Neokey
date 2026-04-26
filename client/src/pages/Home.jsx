@@ -35,7 +35,7 @@ const Banner = ({ render, demo, isPwa, isLoggedIn }) => (
               <span
                 onClick={() => window.showPopup({
                   title: "Using Neokey",
-                  body: <>→ Authorize (Master Password) <br />→ Type/select a service name <br /> → Create password for a service<br /> → Reveal & copy password .<br/> { !demo && isLoggedIn==='T' && <><br/> Tap <Shield className="inline-block align-middle mb-1 text-cyan-400"/> to manually lock the session <br/>(Neokey has autolock) </>} {demo && <><br /> <strong>DEMO</strong> <br />Try Retrieving passwords or Bifrost! <br /><br /> (Reveal for Google, Instagram, X, Netflix...) (Creation disabled for demo.) </>}</>,
+                  body: <>→ Authorize (Master Password) <br />→ Type/select a service name <br /> → Create password for a service<br /> → Reveal & copy password .<br/> { !demo && isLoggedIn==='T' && <><br/> Tap <Shield className="inline-block align-middle mb-1 text-cyan-400"/> to manually lock the session <br/>(Neokey has autolock) </>} {demo && <><br /> <strong>DEMO</strong> <br />Try Retrieving passwords or Bifrost! <br /><br /> (Reveal for Google, Apple, X, Netflix...) (Creation disabled for demo.) </>}</>,
                   primaryLabel: "Got it"
                 })}
                 className="ml-4 text-cyan-300 hover:underline"
@@ -68,7 +68,7 @@ const Banner = ({ render, demo, isPwa, isLoggedIn }) => (
           <span
             onClick={() => window.showPopup({
               title: "Using Neokey",
-              body: <>→ Authorize (Master Password) <br />→ Type/select a service name <br /> → Create password for a service<br /> → Reveal & copy password .<br/> { !demo && isLoggedIn==='T' && <><br/> Tap <Shield className="inline-block align-middle mb-1 text-cyan-400"/> to manually lock the session <br/>(Neokey has autolock) </>} {demo && <><br /> <strong>DEMO</strong> <br />Try Retrieving passwords or Bifrost! <br /><br /> (Reveal for Google, Instagram, X, Netflix...) (Creation disabled for demo.) </>}</>,
+              body: <>→ Authorize (Master Password) <br />→ Type/select a service name <br /> → Create password for a service<br /> → Reveal & copy password .<br/> { !demo && isLoggedIn==='T' && <><br/> Tap <Shield className="inline-block align-middle mb-1 text-cyan-400"/> to manually lock the session <br/>(Neokey has autolock) </>} {demo && <><br /> <strong>DEMO</strong> <br />Try Retrieving passwords or Bifrost! <br /><br /> (Reveal for Google, Apple, X, Netflix...) (Creation disabled for demo.) </>}</>,
               primaryLabel: "Got it"
             })}
             className="ml-4 text-cyan-300 hover:underline"
@@ -188,16 +188,19 @@ const OpenGate = ({ isLocked, selectedService, isFocused, suggestions, loadC, lo
           value={selectedService}
           onChange={handleInputChange}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
           onKeyDown={handleKeyDown}
         />
         {selectedService && isFocused && suggestions.length > 0 && (
-          <ul className="absolute w-full max-w-[60%] sm:max-w-[60%] bg-slate-400 rounded-lg shadow-md top-40 mt-1 sm:mt-8 z-20 max-h-90 overflow-y-visible">
+          <ul className="absolute w-full max-w-fit bg-slate-400 rounded-lg shadow-md top-40 mt-4 sm:mt-8 z-20 max-h-90 overflow-y-visible">
             {suggestions.slice(0, 4).map((suggestion, index) => (
               <li
                 key={index}
-                className="px-4 py-2 text-white hover:bg-slate-500 cursor-pointer text-[1.25rem]"
-                onMouseDown={() => handleSuggestionClick(suggestion)}
+                className="px-2 py-2 text-white hover:bg-slate-500 cursor-pointer text-[1.25rem]"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleSuggestionClick(suggestion);
+                }}
               >
                 {suggestion}
               </li>
@@ -485,6 +488,7 @@ const Home = () => {
       setKey("");
       setSelectedService("");
       toast.success('Key copied to clipboard!', { autoClose: 1500 });
+      setTimeout(() => navigator.clipboard.writeText(''), 60000);
     } catch (err) {
       console.error('Failed to Retrieve', err);
       toast.error('Failed to Retrieve. Contact Us.');
@@ -503,7 +507,7 @@ const Home = () => {
       if (action === 'retrieve') {
         setLoadR(true);
       } else if (demo) {
-        toast.info(<>Can't create/change passwords on Demo account. <br />Please Sign in</>, { autoClose: 2200 }); return;
+        toast.info(<>This is a shared demo. <br />Sign up to unlock full functionality.</>, { autoClose: 2200 }); return;
       } else {
         setLoadC(true);
         metadata = new Date().toISOString().replace(/[-:]/g, '').slice(0, 16);

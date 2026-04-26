@@ -30,12 +30,20 @@ const Login = () => {
     if (isLoggedIn === 'T') { navigate('/'); }
   }, [isLoggedIn, signup, navigate]);
 
+  const validateEmail = (email) => {
+  return String(email)
+    .toLowerCase()
+    .match(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    );
+  };
+  
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     setIsSent(false);
     try {
-      if (!email) {
-        toast.error("Please provide email.");
+      if (!email || !validateEmail(email)) {
+        toast.error("Please provide valid email.");
         return;
       }
 
@@ -58,7 +66,6 @@ const Login = () => {
         setCsalt(data.csalt);
         setIsLoading(false);
         setIsSent(true);
-        setPassword('');
         setTimeout(() => setIsSent(false), (60 * 1000 * 5));
         toast.success(data.message, { autoClose: 1500 });
       } else {
@@ -250,8 +257,8 @@ const Login = () => {
           </div>
         </div>
       ) : (
-        <div className="glass-card shadow-glass mt-40 sm:mt-24 p-6 sm:p-10 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md text-white text-sm">
-          <h2 className="text-3xl font-bold text-center mb-3">{action === "signup" ? "Sign Up" : "Login"}</h2>
+        <div className="glass-card shadow-glass mt-40 sm:mt-16 p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-sm sm:max-w-md text-white text-sm">
+          <h2 className="text-3xl font-bold text-center mb-3">{isSent? "Enter OTP" : (action === "signup" ? "Sign Up" : "Login")}</h2>
           <form onSubmit={(e) => { e.preventDefault(); isSent ? verifyOtp() : (() => { setOtp(['', '', '', '', '', '']); onSubmitHandler(e); })(); }} className="space-y-4">
             <div className="flex items-center gap-3 w-full px-4 py-2.5 rounded-full text-white bg-slate-900">
               <img src={assets.mail_icon} alt="" />
@@ -263,29 +270,29 @@ const Login = () => {
                 name="email"
                 placeholder="Email"
                 autoComplete="email"
+                disabled={isSent}
                 required
                 style={{ overflowX: 'scroll', whiteSpace: 'nowrap' }}
               />
             </div>
 
-            {isSent && (
-              <div className="flex items-center gap-3 w-full px-4 py-2.5 rounded-full text-white bg-slate-900">
-                <img src={assets.lock_icon} alt="" />
-                <input
-                  id="neokey"
-                  onChange={(e) => setPassword(e.target.value.trim())}
-                  value={password}
-                  className="bg-transparent outline-none w-full"
-                  type="new-password"
-                  placeholder="Set a strong Master password"
-                  autoCapitalize="off"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck="false"
-                  required
-                />
-              </div>
-            )}
+            <div className="flex items-center gap-3 w-full px-4 py-2.5 rounded-full text-white bg-slate-900">
+              <img src={assets.lock_icon} alt="" />
+              <input
+                id="neokey"
+                onChange={(e) => setPassword(e.target.value.trim())}
+                value={password}
+                className="bg-transparent outline-none w-full"
+                type="new-password"
+                placeholder={action == 'login' ? "Enter you master password" : "Set a strong master password"}
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                disabled={isSent}
+                required
+              />
+            </div>
 
             {isSent && (
               <div className="flex flex-nowrap justify-center gap-1 sm:flex-nowrap" onPaste={handlePaste}>

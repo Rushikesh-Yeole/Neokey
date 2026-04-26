@@ -66,27 +66,30 @@ function AppContextProvider ({children}) {
     return () => window.removeEventListener('credstore-wiped', handleWipe);
   }, []);
 
-const fetchServices = async () => {
+  const fetchServices = async () => {
     try {
       const snkey = CredStore.getSnkey();
-      if (!snkey) return; 
-      const { data } = await axios.post(`${backendUrl}/user/services`, {});
-      if (data.services) {
-        const decryptedServices = await Promise.all(data.services.map(async (encName) => {
-          try { return await symDecrypt(encName, snkey); } 
-          catch (e) { return null; }
-        }));
-        setUserServices(decryptedServices.filter(Boolean));
-      } else {
-        setUserServices([]);
-      }
-      setAlias(data.alias || "Phoenix");
-    } catch (error) {
-      console.error(error);
+      if (!snkey) return;
+
+      const { data } = await axios.post(`${backendUrl}/user/services`);
+
+      const clean = (await Promise.all(
+        (data?.services || []).map(s =>
+          symDecrypt(s, snkey).catch(() => null)
+        )
+      )).filter(Boolean);
+
+      setUserServices(clean);
+      setAlias(data?.alias || "Phoenix");
+
+      return clean;
+    } catch (err) {
+      console.error(err);
       setUserServices([]);
+      return [];
     }
   };
-
+  
   useEffect(() => {
   isLoggedIn==='T' && fetchServices();
   }, [isLoggedIn]);
@@ -103,7 +106,7 @@ const fetchServices = async () => {
     const {data} = await axios.get(`${backendUrl}/admin/access`);
     if(!data.success){
       setAuthAccess(false);
-      console.log(`Seems authentication systems are down, Sir.`);
+      console.log(`Seems authentication systems are down.`);
     }
   }
 

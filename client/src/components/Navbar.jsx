@@ -9,7 +9,7 @@ import CredStore from "./CredStore";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { backendUrl, isLoggedIn, setIsLoggedIn, demo, setDemo, prod, setSignup, logout } = useContext(AppContext);  
+  const { backendUrl, isLoggedIn, setIsLoggedIn, demo, setDemo, prod, setSignup, logout, fetchServices } = useContext(AppContext);  
   
   const demoLogin = async () => {
     try {
@@ -31,6 +31,7 @@ const Navbar = () => {
         CredStore.setCred(cred);
         setDemo(true);
 
+        await fetchServices();
         setIsLoggedIn('T');
         const encToken = await localEncrypt(token);
         localStorage.setItem("token", encToken);
@@ -46,7 +47,7 @@ const Navbar = () => {
   };
 
   return (
-    <div className="w-full flex justify-between items-center p-4 sm:p-6 sm:px-18 sm:absolute fixed top-0 z-10 select-none glass-card">
+    <div className="w-full flex justify-between items-center p-4 sm:p-6 sm:px-18 sm:absolute fixed top-0 z-10 select-none backdrop-blur-md">
       <img onClick={() => navigate('/')} src={assets.logo} alt="Logo" className="left-5 w-12 mb-1 sm:w-26 mx-2 items-center cursor-pointer glow-logo" />
       <img onClick={() => navigate('/')} src={assets.beta} alt="Beta" className="hidden md:block w-10 mx-2 items-center cursor-pointer" />
 

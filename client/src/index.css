@@ -23,6 +23,15 @@ html, body {
   display: none;
 }
 
+input:disabled {
+    cursor: not-allowed;
+}
+
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 100px #0f172a inset !important;
+  -webkit-text-fill-color: white !important;
+}
+
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }

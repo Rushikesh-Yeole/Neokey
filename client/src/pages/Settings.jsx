@@ -14,7 +14,7 @@ const MENU_ITEMS = [
   { id: 'services', label: 'Manage Services', icon: Key, description: 'Remove saved services' },
   { id: 'account', label: 'Account', icon: Shield, description: 'Info & Privacy' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password & authentication' },
-  { id: 'notifications', label: 'Coming soon ...', icon: Share2, description: '' },
+  { id: 'notifications', label: 'Coming soon ...', icon: Share2, description: 'Share passwords seamlessly' },
 ];
 
 // Manage Services Panel
@@ -33,7 +33,7 @@ const ServicesPanel = ({ isMobile }) => {
 
   const handleSave = async () => {
     if (!hasChanges) return;
-    if (demo) return toast.info("Can't alter Demo account settings.", { autoClose: 2000 });
+    if (demo) return toast.info(<>This is a shared demo. <br />Sign up to unlock full functionality.</>, { autoClose: 2000 });
 
     setLoading(true);
     try {
@@ -147,7 +147,7 @@ const AccountPanel = ({ isMobile }) => {
 
   const delAccount = async () => {
     if (!password) return toast.error("Enter master password");
-    if (demo) return toast.info("Can't alter Demo account settings. Please Sign in");
+    if (demo) return toast.info(<>This is a shared demo. <br />Sign up to unlock full functionality.</>);
 
     setLoading(true);
     try {

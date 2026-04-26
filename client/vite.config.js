@@ -8,8 +8,11 @@ export default defineConfig({
     react(),
     wasm(),
     topLevelAwait()
-],
-server: {
+  ],
+  build: {
+    target: "esnext"
+  },
+  server: {
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin"
